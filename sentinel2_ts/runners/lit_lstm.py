@@ -34,3 +34,6 @@ class LitLSTM(L.LightningModule):
 
     def configure_optimizers(self) -> Optimizer:
         return Adam(self.model.parameters(), lr=2e-3)
+
+    def forward(self, x):
+        return self.model(x, self.time_span)

@@ -4,7 +4,7 @@ from torch import Tensor
 from torch.utils.data.dataset import Dataset
 import numpy as np
 
-from sentinel2_ts.utils.process_data import scale_data
+from sentinel2_ts.utils.process_data import scale_data, get_state
 
 class SentinelDataset(Dataset):
     """Dataset class"""
@@ -50,17 +50,13 @@ class SentinelDataset(Dataset):
         intial_time = self.initial_times[index]
         initial_x = self.initial_x[index]
         initial_y = self.initial_y[index]
-
-        data_path = os.path.join(self.dataset_path, f"{initial_x}_{initial_y}.npy")
+        data_path = os.path.join(self.dataset_path, f"{initial_x}_{initial_x}.npy")
         data = np.load(data_path)
-        reflectance = Tensor(data[intial_time])
-        reflectance_diff = Tensor(data[intial_time] - data[intial_time - 1])
-
-        initial_state = torch.cat((reflectance, reflectance_diff))
+        initial_state = get_state(data, initial_x, initial_y, intial_time)
 
         target_states = np.zeros((self.time_prediction_length, 20), dtype=np.float32)
         for t in range(self.time_prediction_length):
-            target_states[t] = torch.cat((Tensor(data[intial_time + t]), Tensor(data[intial_time + t] - data[intial_time + t - 1])))
+            target_states[t] = get_state(data, initial_x, initial_y, intial_time + t)
 
         return initial_state.unsqueeze(0), target_states
 
