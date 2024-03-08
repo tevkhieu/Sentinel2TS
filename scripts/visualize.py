@@ -8,6 +8,9 @@ import matplotlib.pyplot as plt
 from sentinel2_ts.runners.lit_lstm import LitLSTM
 from sentinel2_ts.utils.process_data import get_state
 
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__),'../'))
+
 def create_arg_parser():
     parser = argparse.ArgumentParser(description='Description of your program')
 

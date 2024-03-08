@@ -2,3 +2,7 @@ data/
 datasets/
 __pycache__/
 models/
+.vscode
+sentinel2_ts.egg-info/
+build/
+data_assimilation/

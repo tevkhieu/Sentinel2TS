@@ -4,7 +4,7 @@ from torch import Tensor
 from torch.utils.data.dataset import Dataset
 import numpy as np
 
-from sentinel2_ts.utils.process_data import scale_data, get_state
+from sentinel2_ts.utils.process_data import get_state, get_state_time_series
 
 class SentinelDataset(Dataset):
     """Dataset class"""
@@ -47,21 +47,12 @@ class SentinelDataset(Dataset):
         return self.dataset_len
     
     def __getitem__(self, index: int) -> Tensor:
-        intial_time = self.initial_times[index]
+        initial_time = self.initial_times[index]
         initial_x = self.initial_x[index]
         initial_y = self.initial_y[index]
-        data_path = os.path.join(self.dataset_path, f"{initial_x}_{initial_x}.npy")
+        data_path = os.path.join(self.dataset_path, f"{initial_x}_{initial_y}.npy")
         data = np.load(data_path)
-        initial_state = get_state(data, initial_x, initial_y, intial_time)
+        initial_state = get_state(data, initial_time)
 
-        target_states = np.zeros((self.time_prediction_length, 20), dtype=np.float32)
-        for t in range(self.time_prediction_length):
-            target_states[t] = get_state(data, initial_x, initial_y, intial_time + t)
-
-        return initial_state.unsqueeze(0), target_states
-
-
-if __name__ == "__main__":
-    path = r"C:\Users\tevch\Documents\Stage\Sentinel2TS\datasets\fontainebleau_interpolated"
-    dataset = SentinelDataset(path)
-    print('ok')
+        observed_state_time_series = get_state_time_series(data, initial_time, self.time_prediction_length)
+        return initial_state.unsqueeze(0), observed_state_time_series

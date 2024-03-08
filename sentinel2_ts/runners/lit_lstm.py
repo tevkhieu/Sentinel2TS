@@ -4,36 +4,39 @@ from torch.optim import Optimizer, Adam
 import torch.nn as nn
 import lightning as L
 from sentinel2_ts.architectures.lstm import LSTM
-from sentinel2_ts.architectures.koopman_ae import KoopmanAE
 
 class LitLSTM(L.LightningModule):
     """Lightning module for training an LSTM"""
 
-    def __init__(self, time_span: int) -> None:
+    def __init__(self, time_span: int, task: str = "prior", lr: float = 2e-3) -> None:
         super().__init__()
-        
+        self.task = task
         self.model = LSTM(20, 512, 20)
         self.criterion = nn.MSELoss()
         self.time_span = time_span
+        self.lr = lr
+        self.val_loss = 1e10
 
     def training_step(self, batch, batch_idx) -> Tensor:
-        inputs, targets = batch
-        outputs = self.model(inputs, self.time_span)
-        loss = self.criterion(outputs, targets)
+        initial_state, observed_states = batch
+        predicted_states = self.model(initial_state, self.time_span)
+        loss = self.criterion(predicted_states, observed_states)
         self.log("train loss", loss)
 
         return loss
 
     def validation_step(self, batch, batch_idx) -> Tensor:
-        inputs, targets = batch
-        outputs = self.model(inputs, self.time_span)
-        loss = self.criterion(outputs, targets)
+        initial_state, observed_states = batch
+        predicted_states = self.model(initial_state, self.time_span)
+        loss = self.criterion(predicted_states, observed_states)
         self.log("val loss", loss)
+        if self.val_loss > loss:
+            torch.save(self.state_dict, "best_lstm.pt")
 
         return loss
 
     def configure_optimizers(self) -> Optimizer:
-        return Adam(self.model.parameters(), lr=2e-3)
+        return Adam(self.model.parameters(), lr=self.lr)
 
-    def forward(self, x):
-        return self.model(x, self.time_span)
+    def forward(self, x, time_span):
+        return self.model(x, time_span)
