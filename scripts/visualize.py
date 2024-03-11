@@ -1,11 +1,11 @@
 import os
 import argparse
 import random as rd
-
+import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
-from sentinel2_ts.runners.lit_lstm import LitLSTM
+from sentinel2_ts.architectures.lstm import LSTM
 from sentinel2_ts.utils.process_data import get_state
 
 import sys
@@ -22,13 +22,17 @@ def create_arg_parser():
     parser.add_argument('--y', type=int, default=None, help="y value where to compute prediction")
     parser.add_argument('--band', type=int, default=None, help="band to display on the graph")
     parser.add_argument('--mask', type=str, default=None, help="path to the mask file")
+    parser.add_argument("--device", type=str, default="cuda:0", help="Device used")
 
     return parser
 
 def main():
     args = create_arg_parser().parse_args()
     if args.mode == "lstm":
-        model = LitLSTM.load_from_checkpoint(args.ckpt_path, time_span=args.time_span)
+        model = LSTM(20, 256, 20)
+    state_dict = torch.load(args.ckpt_path)
+    model.load_state_dict(state_dict)
+    model.to(args.device)
     
     x = rd.randint(0, 99) if args.x is None else args.x
     y = rd.randint(0, 99) if args.y is None else args.x
@@ -37,8 +41,8 @@ def main():
     data_path = os.path.join(args.dataset_path, f"{x:03}_{y:03}.npy")
     data = np.load(data_path)
 
-    initial_state = get_state(data, x, y, 0).view(1, 1, -1).to("cuda:0")
-    prediction = model(initial_state).squeeze().cpu().detach()
+    initial_state = get_state(data, 0).view(1, 1, -1).to(args.device)
+    prediction = model(initial_state, args.time_span).squeeze().cpu().detach()
     ground_truth = data[:args.time_span]
 
     mask = np.ones_like(ground_truth) if args.mask is None else np.load(args.mask)[:args.time_span]

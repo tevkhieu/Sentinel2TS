@@ -17,6 +17,7 @@ def create_arg_parser():
     parser.add_argument("--time_span", type=int, default=100, help="Number of time steps in the future predicted by the network")
     parser.add_argument("--mode", type=str, default="lstm", help="lstm | linear | koopman_ae chooses which architecture to use")
     parser.add_argument("--max_epochs", type=int, default=500, help="Max number of epochs")
+    parser.add_argument("--device", type=str, default="cuda:0", help="Device used")
 
     return parser
 
@@ -30,11 +31,11 @@ def main():
     trainer = L.Trainer(
         accelerator="gpu",
         max_epochs=args.max_epochs,
-        default_root_dir=os.path.join(os.getcwd(), "models", args.experiment_name)
+        default_root_dir=os.path.join(os.getcwd(), "models_lightning_ckpt", args.experiment_name)
     )
 
     if args.mode == "lstm":
-        model = LitLSTM(args.time_span)
+        model = LitLSTM(expermiment_name=args.experiment_name ,time_span=args.time_span)
 
     trainer.fit(model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
     

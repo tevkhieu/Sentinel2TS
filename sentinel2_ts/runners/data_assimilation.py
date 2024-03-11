@@ -27,7 +27,7 @@ class DataAssimilation:
 
     def data_assimilation(
             self, 
-            model: LightningModule, 
+            model: nn.Module, 
             data: NDArray, 
             initial_time: int = 1,
             range_x: tuple[int] = (0, 100), 
@@ -66,18 +66,20 @@ class DataAssimilation:
                     reflectance_grid[initial_time - 1, rows * nb_rows:(rows + 1) * nb_rows, columns * nb_columns:(columns + 1) * nb_columns, :]
                 ))
                 initial_state_grid = torch.cat((initial_reflectance, initial_reflectance_diff), dim=2).flatten(0, 1).unsqueeze(1).to(self.device)
-
+                initial_state_grid = initial_state_grid
+                initial_state_grid = torch.clone(initial_state_grid).detach().requires_grad_()
+                
                 observed_reflectance_time_series = Tensor(reflectance_grid[initial_time:self.time_span, rows * nb_rows:(rows + 1) * nb_rows, columns * nb_columns:(columns + 1) * nb_columns, :])
                 observed_reflectance_diff_time_series = Tensor(
                     reflectance_grid[initial_time:self.time_span, rows * nb_rows:(rows + 1) * nb_rows, columns * nb_columns:(columns + 1) * nb_columns, :] - 
                     reflectance_grid[initial_time-1:self.time_span-1, rows * nb_rows:(rows + 1) * nb_rows, columns * nb_columns:(columns + 1) * nb_columns, :]
                 )               
-                observed_state_time_series = torch.cat((observed_reflectance_time_series, observed_reflectance_diff_time_series), dim=3).to(self.device)            
+                observed_state_time_series = torch.cat((observed_reflectance_time_series, observed_reflectance_diff_time_series), dim=3).flatten(1, 2).transpose(0, 1).to(self.device)          
 
                 optimizer = Adam([initial_state_grid], lr=self.lr)
                 for epoch in range(self.nb_epochs):
                     optimizer.zero_grad()
-                    prediction = model(initial_state_grid, self.time_span).transpose(0, 1).view(self.time_span, nb_rows, nb_columns, 20)[1:]
+                    prediction = model(initial_state_grid, self.time_span)[:, 1:, :]
                     loss = self.criterion(prediction, observed_state_time_series)
                     loss.backward()
                     optimizer.step()
