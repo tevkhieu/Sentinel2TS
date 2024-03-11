@@ -3,9 +3,6 @@ import argparse
 import numpy as np
 from sentinel2_ts.utils.process_data import scale_data
 
-import sys
-sys.path.append(os.path.join(os.path.dirname(__file__),'../'))
-
 def create_arg_parser():
     parser = argparse.ArgumentParser(description="Extract time series from images")
 
@@ -19,6 +16,7 @@ def create_arg_parser():
 
     return parser
 
+
 def main():
     args = create_arg_parser().parse_args()
     dataset_dir = os.path.join("datasets", args.dataset_name)
@@ -29,6 +27,7 @@ def main():
     for x in range(args.minimum_x, args.maximum_x):
         for y in range(args.minimum_y, args.maximum_y):
             np.save(os.path.join(dataset_dir, f"{x:03}_{y:03}.npy"), data[..., x, y])
+
 
 if __name__ == "__main__":
     main()

@@ -6,20 +6,21 @@ import numpy as np
 
 from sentinel2_ts.utils.process_data import get_state, get_state_time_series
 
+
 class SentinelDataset(Dataset):
     """Dataset class"""
 
     def __init__(
-            self, 
-            dataset_path: str, 
-            data_sequence_length: int = 341, 
-            time_prediction_length: int = 100, 
-            dataset_len: int = 512 * 512,
-            minimal_x: int = 250,
-            maximal_x: int = 400,
-            minimal_y: int = 250,
-            maximal_y: int = 400
-        ) -> None:
+        self,
+        dataset_path: str,
+        data_sequence_length: int = 341,
+        time_prediction_length: int = 100,
+        dataset_len: int = 512 * 512,
+        minimal_x: int = 250,
+        maximal_x: int = 400,
+        minimal_y: int = 250,
+        maximal_y: int = 400,
+    ) -> None:
         """
         Initialize the dataset class
 
@@ -28,7 +29,7 @@ class SentinelDataset(Dataset):
             clipping(bool): whether the values above 1 should be clipped to 1 or not
         Returns:
             None
-        """    
+        """
         super().__init__()
         self.dataset_path = dataset_path
 
@@ -36,16 +37,14 @@ class SentinelDataset(Dataset):
         self.dataset_len = dataset_len
 
         self.initial_times = torch.randint(
-            low=1,
-            high=data_sequence_length - 2 * self.time_prediction_length,
-            size=(dataset_len,)
+            low=1, high=data_sequence_length - 2 * self.time_prediction_length, size=(dataset_len,)
         )
         self.initial_x = torch.randint(low=minimal_x, high=maximal_x, size=(dataset_len,))
         self.initial_y = torch.randint(low=minimal_y, high=maximal_y, size=(dataset_len,))
 
     def __len__(self) -> int:
         return self.dataset_len
-    
+
     def __getitem__(self, index: int) -> Tensor:
         initial_time = self.initial_times[index]
         initial_x = self.initial_x[index]

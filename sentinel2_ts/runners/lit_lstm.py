@@ -6,18 +6,17 @@ import torch.nn as nn
 import lightning as L
 from sentinel2_ts.architectures.lstm import LSTM
 
+
 class LitLSTM(L.LightningModule):
     """Lightning module for training an LSTM"""
 
     def __init__(
-            self, 
-            time_span: int, 
-            expermiment_name: str,
-            task: str = "prior", 
-            lr: float = 2e-3,
-        ) -> None:
+        self,
+        time_span: int,
+        expermiment_name: str,
+        lr: float = 2e-3,
+    ) -> None:
         super().__init__()
-        self.task = task
         self.model = LSTM(20, 512, 20)
         self.criterion = nn.MSELoss()
         self.time_span = time_span
@@ -25,7 +24,7 @@ class LitLSTM(L.LightningModule):
         self.val_loss = 1e10
         self.experiment_name = expermiment_name
         self.save_dir = os.path.join("models", expermiment_name)
-        
+
         os.makedirs(self.save_dir, exist_ok=True)
 
     def training_step(self, batch, batch_idx) -> Tensor:
