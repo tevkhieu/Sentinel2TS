@@ -3,7 +3,9 @@ import argparse
 import lightning as L
 from sentinel2_ts.runners.lit_lstm import LitLSTM
 from sentinel2_ts.runners.lit_linear import LitLinear
+from sentinel2_ts.runners.lit_koopman_ae import LitKoopmanAE
 from sentinel2_ts.utils.get_dataloader import get_dataloader
+
 
 def create_arg_parser():
     parser = argparse.ArgumentParser(description="General script for training priors or downstream tasks")
@@ -48,9 +50,10 @@ def main():
 
     if args.mode == "lstm":
         model = LitLSTM(expermiment_name=args.experiment_name, time_span=args.time_span)
-
     elif args.mode == "linear":
         model = LitLinear(size=20, experiment_name=args.experiment_name)
+    elif args.mode == "koopman_ae":
+        model = LitKoopmanAE(size=20, experiment_name=args.experiment_name, time_span=args.time_span, device=args.device)
 
     trainer.fit(model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
 

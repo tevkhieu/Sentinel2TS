@@ -3,6 +3,7 @@ import argparse
 import numpy as np
 from sentinel2_ts.utils.process_data import scale_data
 
+
 def create_arg_parser():
     parser = argparse.ArgumentParser(description="Extract time series from images")
 

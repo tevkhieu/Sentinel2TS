@@ -65,15 +65,10 @@ class LitLinear(L.LightningModule):
         k = self.k.k.weight
         return criterion(torch.matmul(k, k.T), torch.eye(k.size(0), device=self.device))
 
-    def __save_k(self, epoch_loss_dict):
-        if self.use_orthogonal_loss:
-            if epoch_loss_dict["val total loss"] < self.val_loss:
-                self.val_loss = epoch_loss_dict["val total loss"]
-                torch.save(self.k, os.path.join(self.save_dir, "best_k.pt"))
-        else:
-            if epoch_loss_dict["val loss"] < self.val_loss:
-                self.val_loss = epoch_loss_dict["val loss"]
-                torch.save(self.k, os.path.join(self.save_dir, "best_k.pt"))
+    def __save_k(self, loss):
+        if loss < self.val_loss:
+            self.val_loss = loss
+            torch.save(self.k, os.path.join(self.save_dir, "best_k.pt"))
 
     def training_step(self, batch, batch_idx) -> Tensor:
         initial_state, observed_states = batch
@@ -85,7 +80,7 @@ class LitLinear(L.LightningModule):
         initial_state, observed_states = batch
         loss, loss_dict = self.__compute_loss("val", initial_state, observed_states)
         self.log_dict(loss_dict)
-        self.__save_k(loss_dict)
+        self.__save_k(loss)
         return loss
 
     def configure_optimizers(self) -> Optimizer:
