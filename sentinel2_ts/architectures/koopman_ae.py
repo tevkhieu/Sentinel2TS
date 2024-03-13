@@ -52,6 +52,10 @@ class KoopmanAE(nn.Module):
     def one_step_ahead(self, x):
         """Predict one-step-ahead in the latent space using the Koopman operator."""
         return torch.matmul(x, self.K)
+    
+    def n_step_ahed(self, x, n):
+        """Predict n-step-ahead in the latent space using the Koopman operator."""
+        return torch.matmul(x, torch.matrix_power(self.K, n))
 
     def one_step_back(self, x):
         """Predict one-step-back in the latent space using the inverse of the Koopman operator."""
@@ -69,12 +73,12 @@ class KoopmanAE(nn.Module):
             phi (torch.Tensor): Encoded input state.
             phi_advanced (torch.Tensor): Encoded input state advanced by one time step.
         """
-        predicted_states = [x]
-        for _ in range(time_span):
-            phi = self.encode(predicted_states[-1])
-            phi_advanced = self.one_step_ahead(phi)
+        predicted_states = []
+        phi = self.encode(x)
+        for t in range(time_span):
+            phi_advanced = self.n_step_ahead(phi, t)
             predicted_states.append(self.decode(phi_advanced))
-        return torch.stack(predicted_states[1:], dim=1)
+        return torch.stack(predicted_states, dim=1)
 
     def forward_n(self, x, n):
         """

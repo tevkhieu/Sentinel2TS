@@ -1,6 +1,8 @@
 import os
 import argparse
 import numpy as np
+from tqdm import tqdm
+
 from sentinel2_ts.utils.process_data import scale_data
 
 
@@ -14,6 +16,7 @@ def create_arg_parser():
     parser.add_argument("--maximum_x", type=int, default=400, help="Maximal x value on the image")
     parser.add_argument("--minimum_y", type=int, default=250, help="Minimal y value on the image")
     parser.add_argument("--maximum_y", type=int, default=400, help="Maximal y value on the image")
+    parser.add_argument("--mask", type=str, default=None, help="path to the mask file")
 
     return parser
 
@@ -25,9 +28,17 @@ def main():
 
     data = np.load(args.data_path)
     data = scale_data(data, args.clipping)
-    for x in range(args.minimum_x, args.maximum_x):
+
+    indices = range(data.shape[0])
+
+    if args.mask is not None:
+        mask = np.load(args.mask)
+        indices = np.where(mask == 1)
+
+
+    for x in tqdm(range(args.minimum_x, args.maximum_x)):
         for y in range(args.minimum_y, args.maximum_y):
-            np.save(os.path.join(dataset_dir, f"{x:03}_{y:03}.npy"), data[..., x, y])
+            np.save(os.path.join(dataset_dir, f"{x:03}_{y:03}.npy"), data[indices, :, x, y])
 
 
 if __name__ == "__main__":
