@@ -68,7 +68,7 @@ class LitLinear(L.LightningModule):
     def __save_k(self, loss):
         if loss < self.val_loss:
             self.val_loss = loss
-            torch.save(self.k, os.path.join(self.save_dir, "best_k.pt"))
+            torch.save(self.k.state_dict(), os.path.join(self.save_dir, "best_k.pt"))
 
     def training_step(self, batch, batch_idx) -> Tensor:
         initial_state, observed_states = batch

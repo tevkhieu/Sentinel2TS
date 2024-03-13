@@ -59,3 +59,22 @@ def get_state_time_series(pixel_data: ArrayLike, initial_time: int, time_span: i
 
     observed_state_time_series = torch.cat((reflectance_time_series, reflectance_diff_time_series), dim=1)
     return observed_state_time_series
+
+def get_state_from_data(data: ArrayLike, x: int, y: int, t: int) -> Tensor:
+    """
+    Get the initial state given the raw data
+
+    Args:
+        data (ArrayLike): Raw array of data containing the time series of reflectance
+        x (int): x coordinate of the pixel
+        y (int): y coordinate of the pixel
+        t (int): time point
+    Returns:
+        state (Tensor): Initial state at coordinate x, y
+    """
+    reflectance = Tensor(data[t, :, x, y])
+    reflectance_diff = Tensor(data[t, :, x, y] - data[t, :, x, y])
+
+    state = torch.cat((reflectance, reflectance_diff))
+
+    return state

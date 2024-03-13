@@ -96,4 +96,4 @@ class LitKoopmanAE(L.LightningModule):
     def __save_k(self, loss):
         if loss < self.val_loss:
             self.val_loss = loss
-            torch.save(self.model, os.path.join(self.save_dir, f"best_{self.experiment_name}.pt"))
+            torch.save(self.model.state_dict(), os.path.join(self.save_dir, f"best_{self.experiment_name}.pt"))

@@ -35,7 +35,7 @@ def main():
     )
     val_dataloader = get_dataloader(
         args.val_data_path,
-        dataset_len=2600,
+        dataset_len=512 * 51,
         batch_size=args.batch_size,
         time_span=args.time_span,
         shuffle=False,
