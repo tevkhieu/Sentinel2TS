@@ -43,11 +43,15 @@ class LitLinear(L.LightningModule):
         observed_states: Tensor,
     ) -> tuple[Tensor, dict[str, Tensor]]:
         predicted_time_series = self.forward(initial_state, self.time_span)[:, 1:, :]
-        reconstruction_loss = self.__compute_reconstruction_loss(predicted_time_series, observed_states)
+        reconstruction_loss = self.__compute_reconstruction_loss(
+            predicted_time_series, observed_states
+        )
         loss_dict = {f"{phase} loss": reconstruction_loss}
 
         if self.use_orthogonal_loss:
-            orthogonal_loss = self.orthogonal_loss_weight * self.__compute_orthogonal_loss()
+            orthogonal_loss = (
+                self.orthogonal_loss_weight * self.__compute_orthogonal_loss()
+            )
             total_loss = reconstruction_loss + orthogonal_loss
             loss_dict[f"{phase} orthogonal loss"] = orthogonal_loss
             loss_dict[f"{phase} total loss"] = total_loss

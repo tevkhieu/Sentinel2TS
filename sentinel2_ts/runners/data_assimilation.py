@@ -64,9 +64,13 @@ class DataAssimilation:
 
         for rows in tqdm(range(len_x // nb_rows)):
             for columns in range(len_y // nb_columns):
-                initial_state_grid = self.__extract_initial_state_grid(reflectance_grid, rows, columns)
+                initial_state_grid = self.__extract_initial_state_grid(
+                    reflectance_grid, rows, columns
+                )
 
-                observed_state_time_series = self.__extract_observied_time_series(reflectance_grid, rows, columns)
+                observed_state_time_series = self.__extract_observied_time_series(
+                    reflectance_grid, rows, columns
+                )
 
                 optimizer = Adam([initial_state_grid], lr=self.lr)
                 for epoch in range(self.nb_epochs):
@@ -76,15 +80,23 @@ class DataAssimilation:
                     loss.backward()
                     optimizer.step()
                     if epoch % 10 == 0:
-                        self.writer.add_scalar(f"loss batch row {rows} batch column {columns},", loss, epoch)
+                        self.writer.add_scalar(
+                            f"loss batch row {rows} batch column {columns},",
+                            loss,
+                            epoch,
+                        )
 
                 assimilated_states[
-                    rows * nb_rows : (rows + 1) * nb_rows, columns * nb_columns : (columns + 1) * nb_columns, :
+                    rows * nb_rows : (rows + 1) * nb_rows,
+                    columns * nb_columns : (columns + 1) * nb_columns,
+                    :,
                 ] = initial_state_grid.view(nb_rows, nb_columns, -1)
 
         return assimilated_states.cpu().detach().numpy()
 
-    def __extract_initial_state_grid(self, reflectance_grid: NDArray, rows: int, columns: int) -> Tensor:
+    def __extract_initial_state_grid(
+        self, reflectance_grid: NDArray, rows: int, columns: int
+    ) -> Tensor:
         """
         Return the grid of data point of initial states
 
@@ -124,14 +136,19 @@ class DataAssimilation:
         )
 
         initial_state_grid = (
-            torch.cat((initial_reflectance, initial_reflectance_diff), dim=2).flatten(0, 1).unsqueeze(1).to(self.device)
+            torch.cat((initial_reflectance, initial_reflectance_diff), dim=2)
+            .flatten(0, 1)
+            .unsqueeze(1)
+            .to(self.device)
         )
         initial_state_grid = initial_state_grid
         initial_state_grid = torch.clone(initial_state_grid).detach().requires_grad_()
 
         return initial_state_grid
 
-    def __extract_observied_time_series(self, reflectance_grid: NDArray, rows: int, columns: int) -> Tensor:
+    def __extract_observied_time_series(
+        self, reflectance_grid: NDArray, rows: int, columns: int
+    ) -> Tensor:
         """
         Generate time series of observed state
 
@@ -166,7 +183,13 @@ class DataAssimilation:
             ]
         )
         observed_state_time_series = (
-            torch.cat((observed_reflectance_time_series, observed_reflectance_diff_time_series), dim=3)
+            torch.cat(
+                (
+                    observed_reflectance_time_series,
+                    observed_reflectance_diff_time_series,
+                ),
+                dim=3,
+            )
             .flatten(1, 2)
             .transpose(0, 1)
             .to(self.device)

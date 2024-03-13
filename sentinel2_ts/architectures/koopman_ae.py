@@ -21,13 +21,19 @@ class KoopmanAE(nn.Module):
         self.encoder = nn.ModuleList()
         self.encoder.add_module("encoder_1", nn.Linear(input_dim, linear_dims[0]))
         for i in range(len(linear_dims) - 1):
-            self.encoder.add_module(f"encoder_{i+2}", nn.Linear(linear_dims[i], linear_dims[i + 1]))
+            self.encoder.add_module(
+                f"encoder_{i+2}", nn.Linear(linear_dims[i], linear_dims[i + 1])
+            )
 
         # Decoder layers
         self.decoder = nn.ModuleList()
         for i in range(len(linear_dims) - 1):
-            self.decoder.add_module(f"decoder_{i+1}", nn.Linear(linear_dims[-i - 1], linear_dims[-i - 2]))
-        self.decoder.add_module(f"decoder_{len(linear_dims)}", nn.Linear(linear_dims[0], input_dim))
+            self.decoder.add_module(
+                f"decoder_{i+1}", nn.Linear(linear_dims[-i - 1], linear_dims[-i - 2])
+            )
+        self.decoder.add_module(
+            f"decoder_{len(linear_dims)}", nn.Linear(linear_dims[0], input_dim)
+        )
 
         # Koopman operator
         self.K = torch.eye(self.latent_dim, requires_grad=True, device=device)
@@ -52,7 +58,7 @@ class KoopmanAE(nn.Module):
     def one_step_ahead(self, x):
         """Predict one-step-ahead in the latent space using the Koopman operator."""
         return torch.matmul(x, self.K)
-    
+
     def n_step_ahed(self, x, n):
         """Predict n-step-ahead in the latent space using the Koopman operator."""
         return torch.matmul(x, torch.matrix_power(self.K, n))

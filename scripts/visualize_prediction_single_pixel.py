@@ -15,21 +15,41 @@ from sentinel2_ts.utils.process_data import get_state_from_data, scale_data
 def create_arg_parser():
     parser = argparse.ArgumentParser(description="Visualize inference of a network")
 
-    parser.add_argument("--ckpt_path", type=str, default=None, help="Path to the network checkpoint")
-    parser.add_argument("--data_path", type=str, default=None, help="Path to the data to visualize")
     parser.add_argument(
-        "--time_span", type=int, default=342, help="Number of time steps in the future predicted by the network"
+        "--ckpt_path", type=str, default=None, help="Path to the network checkpoint"
     )
     parser.add_argument(
-        "--mode", type=str, default="lstm", help="lstm | linear | koopman_ae chooses which architecture to use"
+        "--data_path", type=str, default=None, help="Path to the data to visualize"
     )
-    parser.add_argument("--x", type=int, default=None, help="x value where to compute prediction")
-    parser.add_argument("--y", type=int, default=None, help="y value where to compute prediction")
-    parser.add_argument("--band", type=int, default=None, help="band to display on the graph")
+    parser.add_argument(
+        "--time_span",
+        type=int,
+        default=342,
+        help="Number of time steps in the future predicted by the network",
+    )
+    parser.add_argument(
+        "--mode",
+        type=str,
+        default="lstm",
+        help="lstm | linear | koopman_ae chooses which architecture to use",
+    )
+    parser.add_argument(
+        "--x", type=int, default=None, help="x value where to compute prediction"
+    )
+    parser.add_argument(
+        "--y", type=int, default=None, help="y value where to compute prediction"
+    )
+    parser.add_argument(
+        "--band", type=int, default=None, help="band to display on the graph"
+    )
     parser.add_argument("--mask", type=str, default=None, help="path to the mask file")
     parser.add_argument("--device", type=str, default="cuda:0", help="Device used")
-    parser.add_argument("--koopman_operator_path", type=str, default=None, help="Path to the matrix K (only for koopman_ae)")
-    
+    parser.add_argument(
+        "--koopman_operator_path",
+        type=str,
+        default=None,
+        help="Path to the matrix K (only for koopman_ae)",
+    )
 
     return parser
 
@@ -65,8 +85,12 @@ def main():
     fig, ax = plt.subplots()
     plt.subplots_adjust(bottom=0.25)  # Adjust bottom to make room for the slider
 
-    slider_ax = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor="lightgoldenrodyellow")  # Define the slider's position and siz
-    slider = Slider(slider_ax, "Band", 0, 9, valinit=0, valstep=1)  # Define the slider itself
+    slider_ax = plt.axes(
+        [0.25, 0.1, 0.65, 0.03], facecolor="lightgoldenrodyellow"
+    )  # Define the slider's position and siz
+    slider = Slider(
+        slider_ax, "Band", 0, 9, valinit=0, valstep=1
+    )  # Define the slider itself
 
     def update(val):
         band = int(slider.val)
@@ -76,14 +100,18 @@ def main():
         ax.axvline([242], 0, 1, c="black", linestyle="dashed", linewidth=3)
         fig.canvas.draw_idle()  # Redraw the plot
 
-    mask = np.ones_like(ground_truth) if args.mask is None else np.load(args.mask)[: args.time_span]
+    mask = (
+        np.ones_like(ground_truth)
+        if args.mask is None
+        else np.load(args.mask)[: args.time_span]
+    )
     indices = np.where(mask == 1)[0]
     ax.plot(prediction[:, band], label="Prediction")
     ax.plot(indices, ground_truth[indices, band], label="Groundtruth")
     ax.axvline([242], 0, 1, c="black", linestyle="dashed", linewidth=3)
-    
+
     slider.on_changed(update)
-    plt.legend()    
+    plt.legend()
     plt.title(f"pixel {x}, {y} from {os.path.split(args.data_path)[-1].split('.')[0]}")
     plt.show()
 

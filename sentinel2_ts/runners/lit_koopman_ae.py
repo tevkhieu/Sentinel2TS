@@ -21,7 +21,7 @@ class LitKoopmanAE(L.LightningModule):
         time_span: int = 100,
         use_orthogonal_loss: bool = True,
         orthogonal_loss_weight: float = 10,
-        device: str = "cuda:0"
+        device: str = "cuda:0",
     ) -> None:
         super(LitKoopmanAE, self).__init__()
         self.model = KoopmanAE(size, [512, 256, 32], device=device)
@@ -41,20 +41,32 @@ class LitKoopmanAE(L.LightningModule):
         initial_state: Tensor,
         observed_states: Tensor,
     ) -> tuple[Tensor, dict[str, Tensor]]:
-        _, predicted_latent_time_series = self.model.forward_n_remember(initial_state, self.time_span)
+        _, predicted_latent_time_series = self.model.forward_n_remember(
+            initial_state, self.time_span
+        )
         observed_latent_time_series = self.model.encode(observed_states)
-        predicted_latent_time_series = predicted_latent_time_series[1:, :, 0, :].transpose(0, 1)
-        reconstruction_loss = self.criterion(self.model.decode(predicted_latent_time_series), observed_states)
+        predicted_latent_time_series = predicted_latent_time_series[
+            1:, :, 0, :
+        ].transpose(0, 1)
+        reconstruction_loss = self.criterion(
+            self.model.decode(predicted_latent_time_series), observed_states
+        )
 
-        decoding_loss = self.criterion(self.model.decode(observed_latent_time_series), observed_states)
+        decoding_loss = self.criterion(
+            self.model.decode(observed_latent_time_series), observed_states
+        )
 
-        feature_loss = self.criterion(predicted_latent_time_series, observed_latent_time_series)
-
+        feature_loss = self.criterion(
+            predicted_latent_time_series, observed_latent_time_series
+        )
 
         orthogonality_loss = self.orthogonal_loss_weight * self.criterion(
-            torch.matmul(self.model.K, self.model.K.T), torch.eye(self.model.K.size(0), device=self.device)
+            torch.matmul(self.model.K, self.model.K.T),
+            torch.eye(self.model.K.size(0), device=self.device),
         )
-        total_loss = reconstruction_loss + decoding_loss + feature_loss + orthogonality_loss
+        total_loss = (
+            reconstruction_loss + decoding_loss + feature_loss + orthogonality_loss
+        )
 
         loss_dict = {
             f"{phase} reconstruction loss": reconstruction_loss,
@@ -96,4 +108,7 @@ class LitKoopmanAE(L.LightningModule):
     def __save_k(self, loss):
         if loss < self.val_loss:
             self.val_loss = loss
-            torch.save(self.model.state_dict(), os.path.join(self.save_dir, f"best_{self.experiment_name}.pt"))
+            torch.save(
+                self.model.state_dict(),
+                os.path.join(self.save_dir, f"best_{self.experiment_name}.pt"),
+            )

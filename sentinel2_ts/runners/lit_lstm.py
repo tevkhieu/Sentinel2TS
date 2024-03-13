@@ -42,7 +42,10 @@ class LitLSTM(L.LightningModule):
         self.log("val loss", loss)
         if self.val_loss > loss:
             self.val_loss = loss
-            torch.save(self.model.state_dict(), os.path.join(self.save_dir, f"best_{self.experiment_name}.pt"))
+            torch.save(
+                self.model.state_dict(),
+                os.path.join(self.save_dir, f"best_{self.experiment_name}.pt"),
+            )
 
         return loss
 

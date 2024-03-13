@@ -57,8 +57,11 @@ def get_state_time_series(pixel_data: ArrayLike, initial_time: int, time_span: i
         pixel_data[initial_time:end_time] - pixel_data[initial_time - 1 : end_time - 1]
     )
 
-    observed_state_time_series = torch.cat((reflectance_time_series, reflectance_diff_time_series), dim=1)
+    observed_state_time_series = torch.cat(
+        (reflectance_time_series, reflectance_diff_time_series), dim=1
+    )
     return observed_state_time_series
+
 
 def get_state_from_data(data: ArrayLike, x: int, y: int, t: int) -> Tensor:
     """

@@ -37,10 +37,16 @@ class SentinelDataset(Dataset):
         self.dataset_len = dataset_len
 
         self.initial_times = torch.randint(
-            low=1, high=data_sequence_length - 2 * self.time_prediction_length, size=(dataset_len,)
+            low=1,
+            high=data_sequence_length - 2 * self.time_prediction_length,
+            size=(dataset_len,),
         )
-        self.initial_x = torch.randint(low=minimal_x, high=maximal_x, size=(dataset_len,))
-        self.initial_y = torch.randint(low=minimal_y, high=maximal_y, size=(dataset_len,))
+        self.initial_x = torch.randint(
+            low=minimal_x, high=maximal_x, size=(dataset_len,)
+        )
+        self.initial_y = torch.randint(
+            low=minimal_y, high=maximal_y, size=(dataset_len,)
+        )
 
     def __len__(self) -> int:
         return self.dataset_len
@@ -53,5 +59,7 @@ class SentinelDataset(Dataset):
         data = np.load(data_path)
         initial_state = get_state(data, initial_time)
 
-        observed_state_time_series = get_state_time_series(data, initial_time, self.time_prediction_length)
+        observed_state_time_series = get_state_time_series(
+            data, initial_time, self.time_prediction_length
+        )
         return initial_state.unsqueeze(0), observed_state_time_series
