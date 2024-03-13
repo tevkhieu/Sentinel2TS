@@ -75,12 +75,17 @@ def main():
     data = scale_data(data, clipping=False)
 
     x = rd.randint(0, data.shape[2]) if args.x is None else args.x
-    y = rd.randint(0, data.shape[3]) if args.y is None else args.x
+    y = rd.randint(0, data.shape[3]) if args.y is None else args.y
     band = rd.randint(0, 9) if args.band is None else args.band
 
     initial_state = get_state_from_data(data, x, y, 0).view(1, 1, -1).to(args.device)
     prediction = model(initial_state, args.time_span).squeeze().cpu().detach()
     ground_truth = data[: args.time_span, :, x, y]
+
+    for band in range(10):
+        print(
+            f"MSE band {band}: {((prediction[..., band] - ground_truth[..., band]) ** 2).mean(): .4f}"
+        )
 
     fig, ax = plt.subplots()
     plt.subplots_adjust(bottom=0.25)  # Adjust bottom to make room for the slider
@@ -98,6 +103,7 @@ def main():
         ax.plot(prediction[:, band], label="Prediction")
         ax.plot(indices, ground_truth[indices, band], label="Groundtruth")
         ax.axvline([242], 0, 1, c="black", linestyle="dashed", linewidth=3)
+        ax.legend()
         fig.canvas.draw_idle()  # Redraw the plot
 
     mask = (
@@ -111,7 +117,7 @@ def main():
     ax.axvline([242], 0, 1, c="black", linestyle="dashed", linewidth=3)
 
     slider.on_changed(update)
-    plt.legend()
+    ax.legend()
     plt.title(f"pixel {x}, {y} from {os.path.split(args.data_path)[-1].split('.')[0]}")
     plt.show()
 

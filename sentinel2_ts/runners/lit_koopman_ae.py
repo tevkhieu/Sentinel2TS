@@ -112,3 +112,7 @@ class LitKoopmanAE(L.LightningModule):
                 self.model.state_dict(),
                 os.path.join(self.save_dir, f"best_{self.experiment_name}.pt"),
             )
+            torch.save(
+                self.model.K,
+                os.path.join(self.save_dir, f"best_k.pt"),
+            )

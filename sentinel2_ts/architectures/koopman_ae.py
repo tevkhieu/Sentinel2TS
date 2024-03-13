@@ -59,7 +59,7 @@ class KoopmanAE(nn.Module):
         """Predict one-step-ahead in the latent space using the Koopman operator."""
         return torch.matmul(x, self.K)
 
-    def n_step_ahed(self, x, n):
+    def n_step_ahead(self, x, n):
         """Predict n-step-ahead in the latent space using the Koopman operator."""
         return torch.matmul(x, torch.matrix_power(self.K, n))
 
