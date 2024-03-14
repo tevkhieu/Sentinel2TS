@@ -2,16 +2,25 @@ import argparse
 import numpy as np
 from numpy.typing import ArrayLike
 
+from sentinel2_ts.utils.visualize import visualize_spectral_signature
+
+
 def create_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_path", help="Path to the data")
     parser.add_argument("--x", type=int, help="x coordinate")
     parser.add_argument("--y", type=int, help="y coordinate")
+    parser.add_argument(
+        "--rank_approximation",
+        type=int,
+        default=5,
+        help="Number of eigenvectors to plot",
+    )
 
     return parser
 
 
-def compute_dmd(data: ArrayLike, x: int, y:int) -> tuple[ArrayLike, ArrayLike]:
+def compute_dmd(data: ArrayLike, x: int, y: int) -> tuple[ArrayLike, ArrayLike]:
     """
     Compute the DMD of the data at point x, y
 
@@ -23,29 +32,34 @@ def compute_dmd(data: ArrayLike, x: int, y:int) -> tuple[ArrayLike, ArrayLike]:
     Returns:
         Tuple[ArrayLike, ArrayLike]: Phi and Lambda DMD modes and eigenvalues
     """
-    data = data[:, :, x, y]
+    x_data = data[:-1, :, x, y].T
+    x_prime_data = data[1:, :, x, y].T
 
-    U, S, Vh = np.linalg.svd(data[:, :-1], full_matrices=False)
+    # Performing Singular Value Decomposition (SVD)
+    U, S, Vh = np.linalg.svd(x_data, full_matrices=False)
 
-    data_inv = Vh.T @ np.diag(1 / S) @ U.T
+    # Constructing the approximation of the A matrix
+    A_tilde = U.T @ x_prime_data @ Vh.T @ np.linalg.inv(np.diag(S))
 
-    A_tilde = U.T @ data_inv @ Vh.T @ np.diag(1 / S)
+    # Calculating eigenvalues and eigenvectors
+    eigenvalues, eigenvectors = np.linalg.eig(A_tilde)
 
-    W, L = np.linalg.eig(A_tilde)
+    # Constructing the DMD modes Phi
+    Phi = x_prime_data @ Vh.T @ np.linalg.inv(np.diag(S)) @ eigenvectors
 
-    Phi = data_inv @ Vh.T @ np.diag(1 / S) @ W
-
-    return Phi, L
+    return Phi, eigenvalues
 
 
 def main():
     args = create_argparser().parse_args()
     data = np.load(args.data_path)
 
+    Phi, eigenvalues = compute_dmd(data, args.x, args.y)
+
+    print(f"Eigenvalues: {eigenvalues}")
+
+    visualize_spectral_signature(args, Phi)
 
 
-    Phi, L = compute_dmd(data, 0, 0)
-
-    print(L)
-
-    
+if __name__ == "__main__":
+    main()
