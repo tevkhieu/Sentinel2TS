@@ -17,4 +17,11 @@ class Linear(nn.Module):
         for _ in range(time_span):
             predicted_states.append(self.k(predicted_states[-1]))
 
-        return torch.stack(predicted_states, dim=1)
+        return torch.stack(predicted_states[1:], dim=0)
+
+
+if __name__ == "__main__":
+    model = Linear(20)
+    x = torch.rand(1, 1, 20)
+    y = model(x, 100)
+    print(y.shape)

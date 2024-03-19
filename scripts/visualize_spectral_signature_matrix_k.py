@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import argparse
 import torch
 
@@ -38,7 +37,7 @@ def is_unit_circle(eigenvalues):
 
 def main():
     args = create_argparser().parse_args()
-    matrix_k = torch.load(args.path_matrix_k).cpu().detach().numpy()
+    matrix_k = torch.load(args.path_matrix_k)["k.weight"].cpu().detach().numpy()
 
     eigenvalues, eigenvectors = np.linalg.eig(matrix_k)
 

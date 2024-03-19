@@ -55,7 +55,9 @@ class SentinelDataset(Dataset):
         initial_time = self.initial_times[index]
         initial_x = self.initial_x[index]
         initial_y = self.initial_y[index]
-        data_path = os.path.join(self.dataset_path, f"{initial_x}_{initial_y}.npy")
+        data_path = os.path.join(
+            self.dataset_path, f"{initial_x:03}_{initial_y:03}.npy"
+        )
         data = np.load(data_path)
         initial_state = get_state(data, initial_time)
 

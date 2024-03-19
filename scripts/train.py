@@ -38,6 +38,18 @@ def create_arg_parser():
         "--max_epochs", type=int, default=500, help="Max number of epochs"
     )
     parser.add_argument("--device", type=str, default="cuda", help="Device used")
+    parser.add_argument(
+        "--minimum_x", type=int, default=250, help="Minimal x value on the image"
+    )
+    parser.add_argument(
+        "--maximum_x", type=int, default=400, help="Maximal x value on the image"
+    )
+    parser.add_argument(
+        "--minimum_y", type=int, default=250, help="Minimal y value on the image"
+    )
+    parser.add_argument(
+        "--maximum_y", type=int, default=400, help="Maximal y value on the image"
+    )
 
     return parser
 
@@ -51,6 +63,10 @@ def main():
         batch_size=args.batch_size,
         time_span=args.time_span,
         dataset_len=512 * 512,
+        minimal_x=args.minimum_x,
+        maximal_x=args.maximum_x,
+        minimal_y=args.minimum_y,
+        maximal_y=args.maximum_y,
     )
     val_dataloader = get_dataloader(
         args.val_data_path,
