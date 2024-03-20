@@ -57,7 +57,9 @@ def main():
     # Compute PCA to visualize the modes on the data
     pca = PCA(n_components=3)
     pca.fit(data[0, :, :, :].transpose(1, 2, 0).reshape(-1, 10))
-    data_pca = pca.transform(data[0, :, :, :].transpose(1, 2, 0).reshape(-1, 10)).reshape(500, 500, 3)
+    data_pca = pca.transform(
+        data[0, :, :, :].transpose(1, 2, 0).reshape(-1, 10)
+    ).reshape(500, 500, 3)
 
     x_range, y_range, band_range = data.shape[2], data.shape[3], data.shape[1]
     mode_amplitude_map = np.zeros((x_range, y_range, 20))
@@ -68,7 +70,6 @@ def main():
                 np.linalg.inv(eigenvectors)
                 @ get_state(data[:, :, x, y], 0).detach().numpy()
             )
-
 
     fig, ax = plt.subplots(nrows=1, ncols=3)
     plt.subplots_adjust(bottom=0.25)  # Adjust bottom to make room for the slider
@@ -99,6 +100,7 @@ def main():
     # plt.colorbar(im)
     axes_off(ax)
     plt.show()
+
 
 def axes_off(ax):
     for a in ax:

@@ -13,11 +13,11 @@ class Linear(nn.Module):
         self.k.weight.data.copy_(torch.eye(size))
 
     def forward(self, initial_state: Tensor, time_span: int):
-        predicted_states = [initial_state.squeeze()]
-        for _ in range(time_span):
+        predicted_states = [initial_state.squeeze(1)]
+        for _ in range(time_span - 1):
             predicted_states.append(self.k(predicted_states[-1]))
 
-        return torch.stack(predicted_states[1:], dim=0)
+        return torch.stack(predicted_states[1:], dim=1)
 
 
 if __name__ == "__main__":
