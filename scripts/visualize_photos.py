@@ -15,6 +15,9 @@ def create_arg_parser():
         "--data_path", type=str, default=None, help="Path to the data to visualize"
     )
     parser.add_argument(
+        "--show_data_training_zone", type=bool, default=False, help="Show the training zone in the data"
+    )
+    parser.add_argument(
         "--time_span",
         type=int,
         default=342,
@@ -59,11 +62,18 @@ def main():
         fig.canvas.draw_idle()  # Redraw the plot
 
     slider.on_changed(update)  # Call update when the slider value is changed
-    ax.plot(np.arange(250, 400), 250 * np.ones(150), "r")
-    ax.plot(np.arange(250, 400), 400 * np.ones(150), "r")
-    ax.plot(250 * np.ones(150), np.arange(250, 400), "r")
-    ax.plot(400 * np.ones(150), np.arange(250, 400), "r")
+    
+    if args.show_data_training_zone:
+        draw_training_zone(ax, 60, 200, 100, 250)
+
+    ax.axis("off")
     plt.show()
+
+def draw_training_zone(ax, min_x, max_x, min_y, max_y):
+    ax.plot(np.arange(min_x, max_x), min_y * np.ones(max_x - min_x), "r")
+    ax.plot(np.arange(min_x, max_x), max_y * np.ones(max_x - min_x), "r")
+    ax.plot(min_x * np.ones(max_y - min_y), np.arange(min_y, max_y), "r")
+    ax.plot(max_x * np.ones(max_y - min_y), np.arange(min_y, max_y), "r")
 
 
 if __name__ == "__main__":

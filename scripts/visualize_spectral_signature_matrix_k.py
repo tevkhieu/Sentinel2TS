@@ -1,7 +1,7 @@
 import numpy as np
 import argparse
 import torch
-
+import matplotlib.pyplot as plt
 from sentinel2_ts.architectures.koopman_ae import KoopmanAE
 from sentinel2_ts.utils.visualize import visualize_spectral_signature
 
@@ -41,10 +41,19 @@ def main():
 
     eigenvalues, eigenvectors = np.linalg.eig(matrix_k)
 
+
+    # plot the unit circle
+    theta = np.linspace(0, 2 * np.pi, 100)
+    plt.plot(np.cos(theta), np.sin(theta))
+
     # Check if all the eigenvalues are in the unit circle
-    print(
-        f"All the eigenvalues are close to the unit circle with a tolerance of 1e-2: {is_unit_circle(eigenvalues)}"
-    )
+    plt.plot(eigenvalues.real, eigenvalues.imag, "x", label="Eigenvalues")
+
+    # make the plot orthonormal
+    plt.axis("equal")
+    plt.legend()
+    plt.title("Eigenvalues of the Koopman operator")
+    plt.show()
 
     if args.mode == "koopman_ae":
         eigenvectors = torch.Tensor(eigenvectors)

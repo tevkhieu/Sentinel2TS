@@ -29,6 +29,7 @@ def create_parser():
     parser.add_argument(
         "--clipping", type=bool, default=True, help="Clipping the data or not"
     )
+    parser.add_argument("--koopman_operator_path", type=str, default=None, help="Path to the Koopman operator")
     return parser
 
 

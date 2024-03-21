@@ -73,18 +73,17 @@ class KoopmanAE(nn.Module):
 
         Args:
             x (torch.Tensor): Input state.
-
+            time_span (int): Number of steps to advance.
+        
         Returns:
-            x_advanced (torch.Tensor): Estimated state after one time step.
-            phi (torch.Tensor): Encoded input state.
-            phi_advanced (torch.Tensor): Encoded input state advanced by one time step.
+            predicted_states (torch.Tensor): Estimated states at each time step.
         """
         predicted_states = []
         phi = self.encode(x)
-        for t in range(time_span):
+        for t in range(time_span-1):
             phi_advanced = self.n_step_ahead(phi, t)
             predicted_states.append(self.decode(phi_advanced))
-        return torch.stack(predicted_states, dim=1)
+        return torch.stack(predicted_states, dim=1).squeeze(2)
 
     def forward_n(self, x, n):
         """
