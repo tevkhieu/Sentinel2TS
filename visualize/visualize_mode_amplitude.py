@@ -5,9 +5,12 @@ import torch
 from sklearn.decomposition import PCA
 from matplotlib.widgets import Slider
 
-from sentinel2_ts.architectures.koopman_ae import KoopmanAE
-from sentinel2_ts.architectures.linear import Linear
-from sentinel2_ts.utils.process_data import scale_data, get_state
+from sentinel2_ts.utils.load_model import koopman_model_from_ckpt
+from sentinel2_ts.utils.process_data import scale_data
+from sentinel2_ts.utils.mode_amplitude_map import (
+    compute_mode_amplitude_koopman,
+    compute_mode_amplitude_map_linear,
+)
 
 
 def create_argparser():
@@ -44,42 +47,25 @@ def main():
     data = np.load(args.data_path)
     data = scale_data(data, clipping=args.clipping)
     x_range, y_range = data.shape[2], data.shape[3]
-    mode_amplitude_map = np.zeros((x_range, y_range, 20))
 
     if args.mode == "linear":
         matrix_k = torch.load(args.path_matrix_k)["k.weight"].cpu().detach().numpy()
-
         eigenvalues, eigenvectors = np.linalg.eig(matrix_k)
-        for x in range(x_range):
-            for y in range(y_range):
-                mode_amplitude_map[x, y, :] = (
-                    np.linalg.inv(eigenvectors)
-                    @ get_state(data[:, :, x, y], 0).detach().numpy()
-                )
+        mode_amplitude_map = compute_mode_amplitude_map_linear(
+            data, model, eigenvectors, x_range, y_range
+        )
 
     elif args.mode == "koopman_ae":
         matrix_k = torch.load(args.path_matrix_k)
-        model = KoopmanAE(20, [512, 256, 32])
-        model.load_state_dict(torch.load(args.ckpt_path))
-        model.K = torch.load(args.path_matrix_k)
         matrix_k = matrix_k.cpu().detach().numpy()
+        model = koopman_model_from_ckpt(args.ckpt_path, args.path_matrix_k)
         eigenvalues, eigenvectors = np.linalg.eig(matrix_k)
         eigenvectors = torch.Tensor(eigenvectors)
-        for x in range(x_range):
-            for y in range(y_range):
-                mode_amplitude_map[x, y, :] = (
-                    model.decode(
-                        torch.pinverse(eigenvectors)
-                        @ model.encode(get_state(data[:, :, x, y], 0))
-                    )
-                    .detach()
-                    .numpy()
-                )
+        mode_amplitude_map = compute_mode_amplitude_koopman(data, model, eigenvectors)
 
     # Compute PCA to visualize the modes on the data
     pca = PCA(n_components=3)
-    pca.fit(data[0, :, :, :].transpose(1, 2, 0).reshape(-1, 10))
-    data_pca = pca.transform(
+    data_pca = pca.fit_transform(
         data[0, :, :, :].transpose(1, 2, 0).reshape(-1, 10)
     ).reshape(500, 500, 3)
 

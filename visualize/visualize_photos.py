@@ -48,8 +48,7 @@ def main():
     # Compute PCA to visualize the modes on the data
     for t in tqdm(range(data.shape[0])):
         pca = PCA(n_components=3)
-        pca.fit(data[t, :, :, :].reshape(-1, 10))
-        data_pca[t] = pca.transform(data[t, :, :, :].reshape(-1, 10)).reshape(
+        data_pca[t] = pca.fit_transform(data[t, :, :, :].reshape(-1, 10)).reshape(
             500, 500, 3
         )
 

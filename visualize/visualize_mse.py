@@ -30,7 +30,7 @@ def create_parser():
         "--clipping", type=bool, default=True, help="Clipping the data or not"
     )
     parser.add_argument(
-        "--koopman_operator_path",
+        "--path_matrix_k",
         type=str,
         default=None,
         help="Path to the Koopman operator",
@@ -47,8 +47,8 @@ def main():
         model = Linear(20)
     if args.mode == "koopman_ae":
         model = KoopmanAE(20, [512, 256, 32], device=args.device)
-        if args.koopman_operator_path is not None:
-            model.K = torch.load(args.koopman_operator_path)
+        if args.path_matrix_k is not None:
+            model.K = torch.load(args.path_matrix_k)
 
     model.load_state_dict(torch.load(args.ckpt_path))
     model.to(args.device)
