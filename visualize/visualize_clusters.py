@@ -26,6 +26,21 @@ def create_argparser():
         default=None,
         help="Number of clusters in KMeans clustering",
     )
+    parser.add_argument(
+        "--cluster_mode", type=str, default="kmeans", help="kmeans | gmm"
+    )
+    parser.add_argument(
+        "--nb_components",
+        type=int,
+        default=None,
+        help="Number of components in GMM clustering",
+    )
+    parser.add_argument(
+        "--covariance_type",
+        type=str,
+        default=None,
+        help="Covariance type in GMM clustering",
+    )
 
     return parser
 
@@ -55,12 +70,23 @@ def main():
         )
 
     clusterizer = Clusterizer()
-    cluster_map_dmd = clusterizer.clusterize_kmeans(
-        mode_amplitude_map, nb_clusters=args.nb_clusters
-    )
-    cluster_map_baseline = clusterizer.clusterize_kmeans(
-        get_state_all_data(data)[0], nb_clusters=args.nb_clusters
-    )
+    if args.cluster_mode == "kmeans":
+        cluster_map_dmd = clusterizer.clusterize_kmeans(
+            mode_amplitude_map, nb_clusters=args.nb_clusters
+        )
+        cluster_map_baseline = clusterizer.clusterize_kmeans(
+            get_state_all_data(data)[0], nb_clusters=args.nb_clusters
+        )
+
+    elif args.cluster_mode == "gmm":
+        cluster_map_dmd = clusterizer.clusterize_gmm(
+            mode_amplitude_map,
+            nb_components=args.nb_components,
+            covariance_type=args.covariance_type,
+        )
+        cluster_map_baseline = clusterizer.clusterize_gmm(
+            get_state_all_data(data)[0], nb_components=args.nb_components
+        )
 
     fig, ax = plt.subplots(1, 2)
     ax[0].imshow(cluster_map_dmd)
