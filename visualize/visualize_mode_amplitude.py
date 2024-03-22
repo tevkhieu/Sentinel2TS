@@ -43,16 +43,38 @@ def main():
 
     data = np.load(args.data_path)
     data = scale_data(data, clipping=args.clipping)
+    x_range, y_range = data.shape[2], data.shape[3]
+    mode_amplitude_map = np.zeros((x_range, y_range, 20))
 
-    matrix_k = torch.load(args.path_matrix_k)["k.weight"].cpu().detach().numpy()
+    if args.mode == "linear":
+        matrix_k = torch.load(args.path_matrix_k)["k.weight"].cpu().detach().numpy()
 
-    eigenvalues, eigenvectors = np.linalg.eig(matrix_k)
+        eigenvalues, eigenvectors = np.linalg.eig(matrix_k)
+        for x in range(x_range):
+            for y in range(y_range):
+                mode_amplitude_map[x, y, :] = (
+                    np.linalg.inv(eigenvectors)
+                    @ get_state(data[:, :, x, y], 0).detach().numpy()
+                )
 
-    if args.mode == "koopman_ae":
-        eigenvectors = torch.Tensor(eigenvectors)
+    elif args.mode == "koopman_ae":
+        matrix_k = torch.load(args.path_matrix_k)
         model = KoopmanAE(20, [512, 256, 32])
         model.load_state_dict(torch.load(args.ckpt_path))
-        eigenvectors = model.decode(eigenvectors).detach().numpy()
+        model.K = torch.load(args.path_matrix_k)
+        matrix_k = matrix_k.cpu().detach().numpy()
+        eigenvalues, eigenvectors = np.linalg.eig(matrix_k)
+        eigenvectors = torch.Tensor(eigenvectors)
+        for x in range(x_range):
+            for y in range(y_range):
+                mode_amplitude_map[x, y, :] = (
+                    model.decode(
+                        torch.pinverse(eigenvectors)
+                        @ model.encode(get_state(data[:, :, x, y], 0))
+                    )
+                    .detach()
+                    .numpy()
+                )
 
     # Compute PCA to visualize the modes on the data
     pca = PCA(n_components=3)
@@ -60,16 +82,6 @@ def main():
     data_pca = pca.transform(
         data[0, :, :, :].transpose(1, 2, 0).reshape(-1, 10)
     ).reshape(500, 500, 3)
-
-    x_range, y_range, band_range = data.shape[2], data.shape[3], data.shape[1]
-    mode_amplitude_map = np.zeros((x_range, y_range, 20))
-
-    for x in range(x_range):
-        for y in range(y_range):
-            mode_amplitude_map[x, y, :] = (
-                np.linalg.inv(eigenvectors)
-                @ get_state(data[:, :, x, y], 0).detach().numpy()
-            )
 
     fig, ax = plt.subplots(nrows=1, ncols=3)
     plt.subplots_adjust(bottom=0.25)  # Adjust bottom to make room for the slider

@@ -41,7 +41,6 @@ def main():
 
     eigenvalues, eigenvectors = np.linalg.eig(matrix_k)
 
-
     # plot the unit circle
     theta = np.linspace(0, 2 * np.pi, 100)
     plt.plot(np.cos(theta), np.sin(theta))
