@@ -1,4 +1,4 @@
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, DBSCAN
 from sklearn.metrics import silhouette_score
 from sklearn.mixture import GaussianMixture
 from sklearn.model_selection import GridSearchCV
@@ -7,11 +7,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
+
 class Clusterizer:
     def __init__(self):
         pass
 
-    def index_best_silhoutte_score(self, data: ArrayLike) -> float:
+    def __index_best_silhoutte_score(self, data: ArrayLike) -> float:
         """
         Find the best number of clusters for the data using the silhouette score
 
@@ -49,7 +50,7 @@ class Clusterizer:
         x, y, bands = data.shape
         data_cluster = data.reshape((-1, bands))
         if nb_clusters is None:
-            nb_clusters = self.index_best_silhoutte_score(data_cluster)
+            nb_clusters = self.__index_best_silhoutte_score(data_cluster)
         k_means = KMeans(n_clusters=nb_clusters, random_state=0, n_init="auto")
         return k_means.fit_predict(data_cluster).reshape((x, y))
 
@@ -71,7 +72,7 @@ class Clusterizer:
         x, y, bands = data.shape
         data_cluster = data.reshape((-1, bands))
         if nb_components is None or covariance_type is None:
-            nb_components, covariance_type = self.grid_search(data_cluster)
+            nb_components, covariance_type = self.__grid_search_gmm(data_cluster)
 
         gmm = GaussianMixture(
             n_components=nb_components, covariance_type=covariance_type, random_state=0
@@ -79,7 +80,7 @@ class Clusterizer:
 
         return gmm.fit_predict(data_cluster).reshape((x, y))
 
-    def grid_search(self, data: ArrayLike) -> tuple[int, str]:
+    def __grid_search_gmm(self, data: ArrayLike) -> tuple[int, str]:
         param_grid = {
             "n_components": range(1, 7),
             "covariance_type": ["spherical", "tied", "diag", "full"],
@@ -100,3 +101,18 @@ class Clusterizer:
         """Callable to pass to GridSearchCV that will use the BIC score."""
         # Make it negative since GridSearchCV expects a score to maximize
         return -estimator.bic(X)
+
+    def clusterize_dbscan(self, data: ArrayLike) -> ArrayLike:
+        """
+        Clusterize the data using DBSCAN
+
+        Args:
+            data (ArrayLike): Data to cluster
+
+        Returns:
+            ArrayLike: Clustering of the data
+        """
+        x, y, bands = data.shape
+        data_cluster = data.reshape((-1, bands))
+        clusterer = DBSCAN(metric="cosine")
+        return clusterer.fit_predict(data_cluster).reshape((x, y))

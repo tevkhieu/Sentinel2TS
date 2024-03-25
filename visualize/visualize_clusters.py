@@ -27,7 +27,7 @@ def create_argparser():
         help="Number of clusters in KMeans clustering",
     )
     parser.add_argument(
-        "--cluster_mode", type=str, default="kmeans", help="kmeans | gmm"
+        "--cluster_mode", type=str, default="kmeans", help="kmeans | gmm | dbscan"
     )
     parser.add_argument(
         "--nb_components",
@@ -58,7 +58,6 @@ def main():
         mode_amplitude_map = compute_mode_amplitude_map_linear(
             data, eigenvectors, x_range, y_range
         )
-
     elif args.mode == "koopman_ae":
         matrix_k = torch.load(args.path_matrix_k)
         matrix_k = matrix_k.cpu().detach().numpy()
@@ -77,7 +76,6 @@ def main():
         cluster_map_baseline = clusterizer.clusterize_kmeans(
             get_state_all_data(data)[0], nb_clusters=args.nb_clusters
         )
-
     elif args.cluster_mode == "gmm":
         cluster_map_dmd = clusterizer.clusterize_gmm(
             mode_amplitude_map,
@@ -87,6 +85,13 @@ def main():
         cluster_map_baseline = clusterizer.clusterize_gmm(
             get_state_all_data(data)[0], nb_components=args.nb_components
         )
+    elif args.cluster_mode == "dbscan":
+        cluster_map_dmd = clusterizer.clusterize_dbscan(mode_amplitude_map)
+        cluster_map_baseline = clusterizer.clusterize_dbscan(
+            get_state_all_data(data)[0]
+        )
+    else:
+        raise ValueError("Invalid cluster mode")
 
     fig, ax = plt.subplots(1, 2)
     ax[0].imshow(cluster_map_dmd)
