@@ -1,9 +1,7 @@
 import os
 import argparse
 import lightning as L
-from sentinel2_ts.runners.lit_lstm import LitLSTM
-from sentinel2_ts.runners.lit_linear import LitLinear
-from sentinel2_ts.runners.lit_koopman_ae import LitKoopmanAE
+from sentinel2_ts.runners import LitKoopmanAE, LitKoopmanUnmixer, LitLinear, LitLSTM
 from sentinel2_ts.utils.get_dataloader import get_dataloader
 
 
@@ -32,23 +30,23 @@ def create_arg_parser():
         "--mode",
         type=str,
         default="lstm",
-        help="lstm | linear | koopman_ae chooses which architecture to use",
+        help="lstm | linear | koopman_ae | unmixer chooses which architecture to use",
     )
     parser.add_argument(
-        "--max_epochs", type=int, default=500, help="Max number of epochs"
+        "--max_epochs", type=int, default=150, help="Max number of epochs"
     )
     parser.add_argument("--device", type=str, default="cuda", help="Device used")
     parser.add_argument(
-        "--minimum_x", type=int, default=250, help="Minimal x value on the image"
+        "--minimum_x", type=int, default=60, help="Minimal x value on the image"
     )
     parser.add_argument(
-        "--maximum_x", type=int, default=400, help="Maximal x value on the image"
+        "--maximum_x", type=int, default=200, help="Maximal x value on the image"
     )
     parser.add_argument(
-        "--minimum_y", type=int, default=250, help="Minimal y value on the image"
+        "--minimum_y", type=int, default=100, help="Minimal y value on the image"
     )
     parser.add_argument(
-        "--maximum_y", type=int, default=400, help="Maximal y value on the image"
+        "--maximum_y", type=int, default=250, help="Maximal y value on the image"
     )
 
     return parser
@@ -95,6 +93,13 @@ def main():
         model = LitLinear(size=20, experiment_name=args.experiment_name)
     elif args.mode == "koopman_ae":
         model = LitKoopmanAE(
+            size=20,
+            experiment_name=args.experiment_name,
+            time_span=args.time_span,
+            device=args.device,
+        )
+    elif args.mode == "unmixer":
+        model = LitKoopmanUnmixer(
             size=20,
             experiment_name=args.experiment_name,
             time_span=args.time_span,

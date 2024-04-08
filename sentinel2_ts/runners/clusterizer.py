@@ -75,7 +75,10 @@ class Clusterizer:
             nb_components, covariance_type = self.__grid_search_gmm(data_cluster)
 
         gmm = GaussianMixture(
-            n_components=nb_components, covariance_type=covariance_type, random_state=0
+            n_components=nb_components,
+            covariance_type=covariance_type,
+            random_state=0,
+            reg_covar=1e-3,
         )
 
         return gmm.fit_predict(data_cluster).reshape((x, y))

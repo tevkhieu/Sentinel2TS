@@ -11,6 +11,7 @@ from sentinel2_ts.utils.mode_amplitude_map import (
     compute_mode_amplitude_koopman,
     compute_mode_amplitude_map_linear,
 )
+from sentinel2_ts.utils.visualize import axes_off
 
 
 def create_argparser():
@@ -49,19 +50,23 @@ def main():
     x_range, y_range = data.shape[2], data.shape[3]
 
     if args.mode == "linear":
-        matrix_k = torch.load(args.path_matrix_k)["k.weight"].cpu().detach().numpy()
-        eigenvalues, eigenvectors = np.linalg.eig(matrix_k)
+        matrix_k = torch.load(args.path_matrix_k)["k.weight"].cpu().detach()
+        eigenvalues, eigenvectors = torch.linalg.eig(matrix_k)
         mode_amplitude_map = compute_mode_amplitude_map_linear(
-            data, model, eigenvectors, x_range, y_range
+            data, eigenvectors, x_range, y_range
         )
 
     elif args.mode == "koopman_ae":
         matrix_k = torch.load(args.path_matrix_k)
-        matrix_k = matrix_k.cpu().detach().numpy()
+        matrix_k = matrix_k.cpu().detach()
         model = koopman_model_from_ckpt(args.ckpt_path, args.path_matrix_k)
-        eigenvalues, eigenvectors = np.linalg.eig(matrix_k)
-        eigenvectors = torch.Tensor(eigenvectors)
-        mode_amplitude_map = compute_mode_amplitude_koopman(data, model, eigenvectors)
+        eigenvalues, eigenvectors = torch.linalg.eig(matrix_k)
+        mode_amplitude_map = compute_mode_amplitude_koopman(
+            data, model, eigenvectors, x_range, y_range
+        )
+
+    filtered_eigenvalues = eigenvalues[eigenvalues.imag > 0]
+    mode_amplitude_map = mode_amplitude_map[..., eigenvalues.imag > 0]
 
     # Compute PCA to visualize the modes on the data
     pca = PCA(n_components=3)
@@ -81,7 +86,7 @@ def main():
         slider_ax,
         "Band index",
         0,
-        19,
+        filtered_eigenvalues.shape[0] - 1,
         valinit=0,
         valstep=1,
     )  # Define the slider itself
@@ -89,20 +94,20 @@ def main():
     def update(val):
         band_index = slider.val
         im.set_data(mode_amplitude_map[..., int(band_index)])
+        ax[2].set_title(
+            f"Mode amplitude map {5 * 2  * np.pi / np.angle(filtered_eigenvalues[int(band_index)]): .4f} days"
+        )
         fig.canvas.draw_idle()  # Redraw the plot
 
     slider.on_changed(update)  # Call update when the slider value is changed
     ax[0].set_title("RGB image")
     ax[1].set_title("PCA")
-    ax[2].set_title("Mode amplitude map")
-    # plt.colorbar(im)
+    ax[2].set_title(
+        f"Mode log-amplitude map {5 * 2 * np.pi /np.angle(filtered_eigenvalues[0]): .4f} days"
+    )
+    plt.colorbar(im)
     axes_off(ax)
     plt.show()
-
-
-def axes_off(ax):
-    for a in ax:
-        a.axis("off")
 
 
 if __name__ == "__main__":

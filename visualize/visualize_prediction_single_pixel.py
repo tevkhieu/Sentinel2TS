@@ -80,7 +80,7 @@ def main():
 
     initial_state = get_state_from_data(data, x, y, 0).view(1, 1, -1).to(args.device)
     prediction = model(initial_state, args.time_span).squeeze().cpu().detach()
-    ground_truth = data[: args.time_span, :, x, y]
+    ground_truth = data[1 : args.time_span, :, x, y]
 
     for band in range(10):
         print(

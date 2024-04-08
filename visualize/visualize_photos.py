@@ -46,9 +46,10 @@ def main():
     data_pca = np.zeros_like(data)[:, :, :, :3]
 
     # Compute PCA to visualize the modes on the data
+    pca = PCA(n_components=3)
+    pca.fit(data[0].reshape(-1, 10))
     for t in tqdm(range(data.shape[0])):
-        pca = PCA(n_components=3)
-        data_pca[t] = pca.fit_transform(data[t, :, :, :].reshape(-1, 10)).reshape(
+        data_pca[t] = pca.transform(data[t, :, :, :].reshape(-1, 10)).reshape(
             500, 500, 3
         )
 

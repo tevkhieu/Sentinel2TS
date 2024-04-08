@@ -1,32 +1,23 @@
 import argparse
-
-import torch
+import matplotlib.pyplot as plt
+from matplotlib.widgets import Slider
 import numpy as np
+from tqdm import tqdm
 from numpy.typing import ArrayLike
 
-from sentinel2_ts.architectures.koopman_ae import KoopmanAE
-from sentinel2_ts.architectures.linear import Linear
-from sentinel2_ts.utils.visualize import visualize_spectral_signature
-from sentinel2_ts.utils.process_data import get_state_time_series, scale_data
+from sentinel2_ts.utils.process_data import scale_data
+from sentinel2_ts.utils.visualize import axes_off
 
 
 def create_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_path", help="Path to the data")
-    parser.add_argument("--x", type=int, help="x coordinate")
-    parser.add_argument("--y", type=int, help="y coordinate")
     parser.add_argument(
-        "--rank_approximation",
-        type=int,
-        default=5,
-        help="Number of eigenvectors to plot",
+        "--load_pre_computed_data",
+        type=bool,
+        default=False,
+        help="Load pre-computed data or not",
     )
-    parser.add_argument("--ckpt_path", type=str, help="Path to the network checkpoint")
-    parser.add_argument("--mode", type=str, default=None, help="linear | koopman_ae")
-    parser.add_argument(
-        "--clipping", type=bool, default=True, help="Clipping the data or not"
-    )
-    parser.add_argument("--path_matrix_k", help="Path to the matrix K file")
 
     return parser
 
@@ -39,48 +30,130 @@ def compute_dmd(data: ArrayLike) -> tuple[ArrayLike, ArrayLike]:
         data (ArrayLike): Time series data
 
     Returns:
-        Tuple[ArrayLike, ArrayLike]: Phi and Lambda DMD modes and eigenvalues
+        Tuple[ArrayLike, ArrayLike]: eigenvectors and Lambda DMD modes and eigenvalues
     """
-    x_data = data[:-1, :].T
-    x_prime_data = data[1:, :].T
+    data = data.reshape(data.shape[0], -1)
+    X = data[:-1, :]
+    Y = data[1:, :]
 
-    # Performing Singular Value Decomposition (SVD)
-    U, S, Vh = np.linalg.svd(x_data, full_matrices=False)
+    U, s, Vh = np.linalg.svd(X.T, full_matrices=False)
 
-    # Constructing the approximation of the A matrix
-    A_tilde = U.T @ x_prime_data @ Vh.T @ np.linalg.inv(np.diag(S))
+    r = len(s)
+    S_r = np.diag(s[:r])
 
-    # Calculating eigenvalues and eigenvectors
+    A_tilde = U.T @ Y.T @ Vh.T @ np.linalg.inv(S_r)
     eigenvalues, eigenvectors = np.linalg.eig(A_tilde)
 
-    # Constructing the DMD modes Phi
-    Phi = x_prime_data @ Vh.T @ np.linalg.inv(np.diag(S)) @ eigenvectors
+    temp = Y.T @ Vh.T @ np.diag(1 / s)
 
-    return Phi, eigenvalues
+    modes = (temp @ eigenvectors) / eigenvalues[np.newaxis, :]
+
+    initial_amplitudes = np.linalg.pinv(modes @ np.diag(eigenvalues)) @ data[1].reshape(
+        -1
+    )
+
+    return (
+        eigenvalues,
+        modes.reshape(500, 500, 342).transpose(2, 0, 1),
+        initial_amplitudes,
+    )
 
 
 def main():
     args = create_argparser().parse_args()
 
-    data = scale_data(np.load(args.data_path), clipping=True)[:, :, args.x, args.y]
+    if args.load_pre_computed_data:
+        eigenvalues = np.load("eigenvalues.npy")
+        eigenvectors = np.load("eigenvectors.npy")
+        initial_amplitudes = np.load("initial_amplitudes.npy")
+    else:
+        data = scale_data(np.load(args.data_path), clipping=True)
 
-    Phi, eigenvalues = compute_dmd(data)
-    print(f"Eigenvalues of DMD on data: {eigenvalues}")
-    visualize_spectral_signature(args, Phi)
+        eigenvalues_array = []
+        eigenvectors_array = []
+        amplitude_maps_array = []
 
-    if args.mode == "koopman_ae":
-        model = KoopmanAE(20, [512, 256, 32])
-        model.load_state_dict(torch.load(args.ckpt_path))
-        model.K = torch.load(args.path_matrix_k)
-    elif args.mode == "linear":
-        model = Linear(20)
-        model.load_state_dict(torch.load(args.ckpt_path))
+        for band in tqdm(range(data.shape[1])):
+            eigenvalues, eigenvectors, initial_amplitudes = compute_dmd(
+                data[:, band, :, :]
+            )
+            eigenvalues_array.append(eigenvalues)
+            eigenvectors_array.append(eigenvectors)
+            amplitude_maps_array.append(initial_amplitudes)
 
-    latent_data = model.encode(get_state_time_series(data, 1, 342)).detach().numpy()
-    latent_phi, _ = compute_dmd(latent_data)
-    decoded_latent_phi = model.decode(torch.Tensor(latent_phi.T)).detach().numpy()
+        eigenvalues = np.stack(eigenvalues_array)
+        eigenvectors = np.stack(eigenvectors_array)
+        initial_amplitudes = np.stack(amplitude_maps_array)
 
-    visualize_spectral_signature(args, decoded_latent_phi)
+        np.save("eigenvalues.npy", eigenvalues)
+        np.save("eigenvectors.npy", eigenvectors)
+        np.save("initial_amplitudes.npy", initial_amplitudes)
+
+
+    # TODO Fix this someday lmao
+    # for i in range(eigenvalues.shape[0]):
+    #     eigenvectors = eigenvectors[i, eigenvalues[i].imag > 0]
+    #     initial_amplitudes = initial_amplitudes[i, eigenvalues[i].imag > 0]
+    #     eigenvalues = eigenvalues[i, eigenvalues[i].imag > 0]
+
+    fig, ax = plt.subplots(nrows=1, ncols=2)
+    plt.subplots_adjust(bottom=0.25)  # Adjust bottom to make room for the band_slider
+    scatter_plot = ax[0].scatter(
+        np.angle(eigenvalues[0]),
+        np.abs(eigenvalues[0]),
+        c=np.log(np.abs(initial_amplitudes[0])),
+    )
+    im = ax[1].imshow(eigenvectors.real[0, 0])
+
+    band_slider_ax = plt.axes(
+        [0.25, 0.1, 0.65, 0.03], facecolor="lightgoldenrodyellow"
+    )  # Define the band_slider's position and size
+    band_slider = Slider(
+        band_slider_ax,
+        "Band index",
+        0,
+        eigenvalues.shape[0] - 1,
+        valinit=0,
+        valstep=1,
+    )
+
+    mode_slider_ax = plt.axes(
+        [0.25, 0.05, 0.65, 0.03], facecolor="lightgoldenrodyellow"
+    )
+    mode_slider = Slider(
+        mode_slider_ax,
+        "Mode index",
+        0,
+        342 - 1,
+        valinit=0,
+        valstep=1,
+    )
+
+    def update(val):
+        band_index = band_slider.val
+        mode_index = mode_slider.val
+        im.set_data(eigenvectors.real[int(band_index), int(mode_index)])
+        scatter_plot.set_offsets(
+            np.array(
+                [
+                    [
+                        np.angle(eigenvalues[int(band_index)]),
+                        np.abs(eigenvalues[int(band_index)]),
+                    ]
+                ]
+            )
+            .squeeze(0)
+            .transpose(1, 0)
+        )
+        scatter_plot.set_array(np.log(np.abs(initial_amplitudes[int(band_index)])))
+        fig.canvas.draw_idle()
+
+    band_slider.on_changed(update)
+    mode_slider.on_changed(update)
+
+    plt.colorbar(im)
+    plt.colorbar(scatter_plot)
+    plt.show()
 
 
 if __name__ == "__main__":
