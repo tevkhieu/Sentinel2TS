@@ -89,7 +89,6 @@ def main():
         np.save("eigenvectors.npy", eigenvectors)
         np.save("initial_amplitudes.npy", initial_amplitudes)
 
-
     # TODO Fix this someday lmao
     # for i in range(eigenvalues.shape[0]):
     #     eigenvectors = eigenvectors[i, eigenvalues[i].imag > 0]

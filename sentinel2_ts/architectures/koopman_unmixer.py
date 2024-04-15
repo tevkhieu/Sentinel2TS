@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from .sparsemax import Sparsemax
 
 
 class KoopmanUnmixer(nn.Module):
@@ -29,7 +30,7 @@ class KoopmanUnmixer(nn.Module):
         self.state_dict()["K"] = self.K
 
         self.decoder = nn.Linear(self.latent_dim, input_dim)
-        self.softmax = nn.Softmax(dim=1)
+        self.final_activation = nn.ReLU()
 
     def encode(self, x):
         """Encode input data x using the encoder layers."""
@@ -67,7 +68,7 @@ class KoopmanUnmixer(nn.Module):
 
     def decode(self, x):
         """Decode latent space representation x using the decoder layer."""
-        return self.softmax(self.decoder(x))
+        return self.decoder(self.final_activation(x))
 
     def forward_n(self, x, n):
         """
@@ -108,3 +109,21 @@ class KoopmanUnmixer(nn.Module):
             phis.append(self.one_step_ahead(phis[-1]))
         x_advanced = None if training else self.decode(phis[n])
         return x_advanced, torch.cat(tuple(phi.unsqueeze(0) for phi in phis), dim=0)
+
+    def get_abundance_remember(self, x, n):
+        """
+        Get abundance at each time step up to n.
+
+        Args:
+            x (torch.Tensor): Input state.
+            n (int): Number of steps to advance.
+
+        Returns:
+            abundances (torch.Tensor): Abundances at each time step.
+        """
+        phi = self.encode(x)
+        abundances = []
+        for t in range(n - 1):
+            phi = self.one_step_ahead(phi)
+            abundances.append(self.final_activation(phi))
+        return torch.stack(abundances, dim=1).squeeze(2)

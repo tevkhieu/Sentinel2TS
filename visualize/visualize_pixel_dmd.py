@@ -11,7 +11,12 @@ from sentinel2_ts.utils.visualize import visualize_spectral_signature
 
 def create_argparser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_path",type=str, default="data/fontainebleau_interpolated.npy", help="Path to the data")
+    parser.add_argument(
+        "--data_path",
+        type=str,
+        default="data/fontainebleau_interpolated.npy",
+        help="Path to the data",
+    )
     parser.add_argument("--x", type=int, default=250, help="x coordinate")
     parser.add_argument("--y", type=int, default=300, help="y coordinate")
     parser.add_argument(
@@ -74,6 +79,7 @@ def main():
 
     visualize_spectral_signature(ax[1], Phi, eigenvalues)
     plt.show()
+
 
 if __name__ == "__main__":
     main()

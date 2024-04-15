@@ -96,6 +96,6 @@ def get_state_all_data(data: ArrayLike) -> ArrayLike:
     reflectance = Tensor(data[1:, :, :, :])
     reflectance_diff = Tensor(data[1:, :, :, :] - data[:-1, :, :, :])
 
-    states = np.concatenate((reflectance, reflectance_diff), axis=1)
+    states = torch.concatenate((reflectance, reflectance_diff), axis=1)
 
-    return states.transpose(0, 2, 3, 1)
+    return states.transpose(1, 2).transpose(2, 3)

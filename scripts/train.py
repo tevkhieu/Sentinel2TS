@@ -48,7 +48,14 @@ def create_arg_parser():
     parser.add_argument(
         "--maximum_y", type=int, default=250, help="Maximal y value on the image"
     )
-
+    parser.add_argument("--size", type=int, default=20, help="Size of the model")
+    parser.add_argument(
+        "--latent_dim",
+        type=int,
+        nargs="+",
+        default=[512, 256, 32],
+        help="Latent dimension",
+    )
     return parser
 
 
@@ -90,18 +97,19 @@ def main():
     if args.mode == "lstm":
         model = LitLSTM(expermiment_name=args.experiment_name, time_span=args.time_span)
     elif args.mode == "linear":
-        model = LitLinear(size=20, experiment_name=args.experiment_name)
+        model = LitLinear(size=args.size, experiment_name=args.experiment_name)
     elif args.mode == "koopman_ae":
         model = LitKoopmanAE(
-            size=20,
+            size=args.size,
             experiment_name=args.experiment_name,
             time_span=args.time_span,
             device=args.device,
         )
     elif args.mode == "unmixer":
         model = LitKoopmanUnmixer(
-            size=20,
+            size=args.size,
             experiment_name=args.experiment_name,
+            latent_dim=args.latent_dim,
             time_span=args.time_span,
             device=args.device,
         )

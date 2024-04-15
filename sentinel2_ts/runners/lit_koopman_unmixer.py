@@ -1,9 +1,11 @@
 import os
+from lightning.pytorch.core.optimizer import LightningOptimizer
 import torch
 from torch import Tensor
 from torch.optim import Optimizer
 from torch.optim.adam import Adam
 from torch import nn
+import torch.nn.functional as F
 from sentinel2_ts.architectures import KoopmanUnmixer
 import lightning as L
 
@@ -17,6 +19,7 @@ class LitKoopmanUnmixer(L.LightningModule):
         self,
         size: int,
         experiment_name: str,
+        latent_dim: list[int] = [512, 256, 32],
         lr: int = 1e-3,
         time_span: int = 100,
         use_orthogonal_loss: bool = True,
@@ -24,7 +27,7 @@ class LitKoopmanUnmixer(L.LightningModule):
         device: str = "cuda:0",
     ) -> None:
         super(LitKoopmanUnmixer, self).__init__()
-        self.model = KoopmanUnmixer(size, [512, 256, 32], device=device)
+        self.model = KoopmanUnmixer(size, latent_dim, device=device)
         self.time_span = time_span
         self.use_orthogonal_loss = use_orthogonal_loss
         self.experiment_name = experiment_name
@@ -34,6 +37,8 @@ class LitKoopmanUnmixer(L.LightningModule):
         self.criterion = nn.MSELoss()
         self.save_dir = os.path.join("models", self.experiment_name)
         os.makedirs(self.save_dir, exist_ok=True)
+
+        self.automatic_optimization = False
 
     def __compute_loss(
         self,
@@ -48,40 +53,41 @@ class LitKoopmanUnmixer(L.LightningModule):
         predicted_latent_time_series = predicted_latent_time_series[
             1:, :, 0, :
         ].transpose(0, 1)
-        reconstruction_loss = self.criterion(
-            self.model.decode(predicted_latent_time_series), observed_states
+
+        loss_dict = {}
+        _, loss_dict = self.__compute_reconstruction_loss(
+            phase, loss_dict, predicted_latent_time_series, observed_states
         )
 
-        decoding_loss = self.criterion(
-            self.model.decode(observed_latent_time_series), observed_states
+        _, loss_dict = self.__compute_decoding_loss(
+            phase, loss_dict, observed_latent_time_series, observed_states
         )
 
-        feature_loss = self.criterion(
-            predicted_latent_time_series, observed_latent_time_series
+        _, loss_dict = self.__compute_feature_loss(
+            phase, loss_dict, predicted_latent_time_series, observed_latent_time_series
         )
 
-        orthogonality_loss = self.orthogonal_loss_weight * self.criterion(
-            torch.matmul(self.model.K, self.model.K.T),
-            torch.eye(self.model.K.size(0), device=self.device),
-        )
-        total_loss = (
-            reconstruction_loss + decoding_loss + feature_loss + orthogonality_loss
+        _, loss_dict = self.__compute_orthogonality_loss(phase, loss_dict)
+
+        _, loss_dict = self.__compute_sparsity_loss(
+            phase, loss_dict, predicted_latent_time_series
         )
 
-        loss_dict = {
-            f"{phase} reconstruction loss": reconstruction_loss,
-            f"{phase} decoding loss": decoding_loss,
-            f"{phase} feature loss": feature_loss,
-            f"{phase} orthogonality loss": orthogonality_loss,
-            f"{phase} total loss": total_loss,
-        }
+        total_loss, loss_dict = self.__compute_total_loss(phase, loss_dict)
 
         return total_loss, loss_dict
 
     def training_step(self, batch, batch_idx) -> Tensor:
         initial_state, observed_states = batch
+        opt = self.optimizers()
+        opt.zero_grad()
         loss, loss_dict = self.__compute_loss("train", initial_state, observed_states)
         self.log_dict(loss_dict)
+        self.manual_backward(loss)
+        opt.step()
+        with torch.no_grad():
+            self.model.decoder.weight.copy_(self.model.decoder.weight.clamp(min=0))
+
         return loss
 
     def validation_step(self, batch, batch_idx) -> Tensor:
@@ -116,3 +122,55 @@ class LitKoopmanUnmixer(L.LightningModule):
                 self.model.K,
                 os.path.join(self.save_dir, f"best_k.pt"),
             )
+
+    def __compute_reconstruction_loss(
+        self, phase, loss_dict, predicted_latent_time_series, observed_states
+    ):
+        reconstruction_loss = self.criterion(
+            self.model.decode(predicted_latent_time_series), observed_states
+        )
+        loss_dict[f"{phase} reconstruction loss"] = reconstruction_loss
+        return reconstruction_loss, loss_dict
+
+    def __compute_decoding_loss(
+        self, phase, loss_dict, observed_latent_time_series, observed_states
+    ):
+        decoding_loss = self.criterion(
+            self.model.decode(observed_latent_time_series), observed_states
+        )
+        loss_dict[f"{phase} decoding loss"] = decoding_loss
+        return decoding_loss, loss_dict
+
+    def __compute_feature_loss(
+        self,
+        phase,
+        loss_dict,
+        predicted_latent_time_series,
+        observed_latent_time_series,
+    ):
+        feature_loss = self.criterion(
+            predicted_latent_time_series, observed_latent_time_series
+        )
+        loss_dict[f"{phase} feature loss"] = feature_loss
+        return feature_loss, loss_dict
+
+    def __compute_orthogonality_loss(self, phase, loss_dict):
+        orthogonality_loss = self.orthogonal_loss_weight * self.criterion(
+            torch.matmul(self.model.K, self.model.K.T),
+            torch.eye(self.model.K.size(0), device=self.device),
+        )
+        loss_dict[f"{phase} orthogonality loss"] = orthogonality_loss
+        return orthogonality_loss, loss_dict
+
+    def __compute_sparsity_loss(self, phase, loss_dict, predicted_latent_time_series):
+        sparsity_loss = F.l1_loss(
+            F.relu(predicted_latent_time_series),
+            torch.zeros_like(predicted_latent_time_series),
+        )
+        loss_dict[f"{phase} sparsity loss"] = sparsity_loss
+        return sparsity_loss, loss_dict
+
+    def __compute_total_loss(self, phase, loss_dict):
+        total_loss = sum(loss_dict.values())
+        loss_dict[f"{phase} total loss"] = total_loss
+        return total_loss, loss_dict
