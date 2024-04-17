@@ -45,13 +45,16 @@ def create_parser():
     return parser
 
 
+@torch.no_grad()
 def main():
     args = create_parser().parse_args()
 
     if args.mode == "lstm":
         model = LSTM(20, 256, 20)
+        model.load_state_dict(torch.load(args.ckpt_path))
     if args.mode == "linear":
         model = Linear(20)
+        model.load_state_dict(torch.load(args.ckpt_path))
     if args.mode == "koopman_ae":
         model = koopman_model_from_ckpt(
             args.ckpt_path, args.path_matrix_k, "koopman_ae", args.latent_dim
@@ -61,7 +64,6 @@ def main():
             args.ckpt_path, args.path_matrix_k, "koopman_unmixer", args.latent_dim
         )
 
-    model.load_state_dict(torch.load(args.ckpt_path))
     model.to(args.device)
     model.eval()
 
@@ -71,17 +73,20 @@ def main():
     x_range, y_range = data.shape[2], data.shape[3]
     mse_map = np.zeros((x_range, y_range))
     state_map_time_series = get_state_all_data(data)[242:]
+
+    total_mse = 0
     for x in tqdm(range(x_range)):
         prediction = model(state_map_time_series[0, x, :, :].to(args.device), 100)
-        mse = torch.mean(
-            (
-                prediction
-                - state_map_time_series[1:, x, :, :].transpose(0, 1).to(args.device)
-            )
-            ** 2,
-            dim=(1, 2),
-        )
+        squarred_error = (
+            prediction[:, :, :10]
+            - state_map_time_series[1:, x, :, :10].transpose(0, 1).to(args.device)
+        ) ** 2
+
+        total_mse += squarred_error.sum()
+        mse = torch.mean(squarred_error, dim=(1, 2))
         mse_map[x, :] = mse.cpu().detach().numpy()
+
+    print(f"Total MSE: {total_mse/(x_range*y_range*100*10):.4f}")
 
     plt.imshow(mse_map)
     plt.axis("off")

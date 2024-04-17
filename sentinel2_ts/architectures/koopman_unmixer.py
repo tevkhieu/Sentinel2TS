@@ -110,7 +110,7 @@ class KoopmanUnmixer(nn.Module):
         x_advanced = None if training else self.decode(phis[n])
         return x_advanced, torch.cat(tuple(phi.unsqueeze(0) for phi in phis), dim=0)
 
-    def get_abundance_remember(self, x, n):
+    def get_abundance_remember(self, x, n, eps: float = 1e-6):
         """
         Get abundance at each time step up to n.
 
@@ -119,11 +119,14 @@ class KoopmanUnmixer(nn.Module):
             n (int): Number of steps to advance.
 
         Returns:
-            abundances (torch.Tensor): Abundances at each time step.
+            abundance_list (torch.Tensor): Abundances at each time step.
         """
         phi = self.encode(x)
-        abundances = []
+        abundance_list = []
         for t in range(n - 1):
             phi = self.one_step_ahead(phi)
-            abundances.append(self.final_activation(phi))
-        return torch.stack(abundances, dim=1).squeeze(2)
+            abundance = self.final_activation(phi) / (
+                torch.sum(self.final_activation(phi), dim=1, keepdim=True) + eps
+            )
+            abundance_list.append(abundance)
+        return torch.stack(abundance_list, dim=1).squeeze(2)

@@ -6,9 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 
-from sentinel2_ts.architectures.lstm import LSTM
-from sentinel2_ts.architectures.linear import Linear
-from sentinel2_ts.architectures.koopman_ae import KoopmanAE
+from sentinel2_ts.architectures import LSTM, Linear, KoopmanAE, KoopmanUnmixer
+from sentinel2_ts.utils.load_model import koopman_model_from_ckpt
 from sentinel2_ts.utils.process_data import get_state_from_data, scale_data
 
 
@@ -24,14 +23,14 @@ def create_arg_parser():
     parser.add_argument(
         "--time_span",
         type=int,
-        default=342,
+        default=343,
         help="Number of time steps in the future predicted by the network",
     )
     parser.add_argument(
         "--mode",
         type=str,
         default="lstm",
-        help="lstm | linear | koopman_ae chooses which architecture to use",
+        help="lstm | linear | koopman_ae | koopman_unmixer chooses which architecture to use",
     )
     parser.add_argument(
         "--x", type=int, default=None, help="x value where to compute prediction"
@@ -45,15 +44,17 @@ def create_arg_parser():
     parser.add_argument("--mask", type=str, default=None, help="path to the mask file")
     parser.add_argument("--device", type=str, default="cuda:0", help="Device used")
     parser.add_argument(
-        "--koopman_operator_path",
+        "--path_matrix_k",
         type=str,
         default=None,
         help="Path to the matrix K (only for koopman_ae)",
     )
+    parser.add_argument("--latent_dim", type=int, nargs="+", default=[512, 256, 32])
 
     return parser
 
 
+@torch.no_grad()
 def main():
     args = create_arg_parser().parse_args()
 
@@ -62,9 +63,13 @@ def main():
     if args.mode == "linear":
         model = Linear(20)
     if args.mode == "koopman_ae":
-        model = KoopmanAE(20, [512, 256, 32], device=args.device)
-        if args.koopman_operator_path is not None:
-            model.K = torch.load(args.koopman_operator_path)
+        model = koopman_model_from_ckpt(
+            args.ckpt_path, args.path_matrix_k, "koopman_ae", args.latent_dim
+        )
+    if args.mode == "koopman_unmixer":
+        model = koopman_model_from_ckpt(
+            args.ckpt_path, args.path_matrix_k, "koopman_unmixer", args.latent_dim
+        )
 
     state_dict = torch.load(args.ckpt_path)
     model.load_state_dict(state_dict)
@@ -78,13 +83,15 @@ def main():
     y = rd.randint(0, data.shape[3]) if args.y is None else args.y
     band = rd.randint(0, 9) if args.band is None else args.band
 
-    initial_state = get_state_from_data(data, x, y, 0).view(1, 1, -1).to(args.device)
+    initial_state = get_state_from_data(data, x, y, 1).view(1, 1, -1).to(args.device)
     prediction = model(initial_state, args.time_span).squeeze().cpu().detach()
-    ground_truth = data[1 : args.time_span, :, x, y]
+    ground_truth = data[1 : args.time_span + 1, :, x, y]
+
+    print(f"MSE: {((prediction[:-100, 10:] - ground_truth[:-100]) ** 2).mean(): .4f}")
 
     for band in range(10):
         print(
-            f"MSE band {band}: {((prediction[..., band] - ground_truth[..., band]) ** 2).mean(): .4f}"
+            f"MSE band {band}: {((prediction[:-100, band] - ground_truth[-100, band]) ** 2).mean(): .4f}"
         )
 
     fig, ax = plt.subplots()
@@ -118,7 +125,7 @@ def main():
 
     slider.on_changed(update)
     ax.legend()
-    plt.title(f"pixel {x}, {y} from {os.path.split(args.data_path)[-1].split('.')[0]}")
+    plt.title(f"{args.mode}, pixel {x}, {y} from {os.path.split(args.data_path)[-1].split('.')[0]}")
     plt.show()
 
 

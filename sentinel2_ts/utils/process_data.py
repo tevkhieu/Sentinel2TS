@@ -78,7 +78,7 @@ def get_state_from_data(data: ArrayLike, x: int, y: int, t: int) -> Tensor:
         state (Tensor): Initial state at coordinate x, y
     """
     reflectance = Tensor(data[t, :, x, y])
-    reflectance_diff = Tensor(data[t, :, x, y] - data[t, :, x, y])
+    reflectance_diff = Tensor(data[t, :, x, y] - data[t - 1, :, x, y])
 
     state = torch.cat((reflectance, reflectance_diff))
 

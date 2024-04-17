@@ -32,6 +32,7 @@ def create_argparser():
     return parser
 
 
+@torch.no_grad()
 def main():
     args = create_argparser().parse_args()
 
@@ -44,7 +45,7 @@ def main():
     model = koopman_model_from_ckpt(
         args.ckpt_path, args.path_matrix_k, "koopman_unmixer", args.latent_dim
     ).to(args.device)
-
+    model.eval()
     state_map = get_state_all_data(data)
     for t in tqdm(range(time_range - 1)):
         for x in range(x_range):
@@ -60,7 +61,7 @@ def main():
     plt.subplots_adjust(
         bottom=0.25
     )  # Adjust bottom to make room for the endmember_slider
-    im = ax.imshow(abundance_map[0, :, :, 0])
+    im = ax.imshow(abundance_map[0, :, :, 0], vmin=0, vmax=1, cmap="viridis")
     endmember_slider_ax = plt.axes(
         [0.25, 0.1, 0.65, 0.03], facecolor="lightgoldenrodyellow"
     )  # Define the endmember_slider's position and size
