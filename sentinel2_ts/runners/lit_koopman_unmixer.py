@@ -86,7 +86,9 @@ class LitKoopmanUnmixer(L.LightningModule):
         self.manual_backward(loss)
         opt.step()
         with torch.no_grad():
-            self.model.decoder.weight.copy_(self.model.decoder.weight.clamp(min=0))
+            self.model.decoder.weight[:10, :].copy_(
+                self.model.decoder.weight[:10, :].clamp(min=0)
+            )
 
         return loss
 

@@ -24,14 +24,14 @@ def compute_mode_amplitude_koopman(
     Returns:
         ArrayLike: Mode amplitude map
     """
-    mode_amplitude_map = np.zeros((x_range, y_range, 32))
+    mode_amplitude_map = np.zeros((x_range, y_range, eigenvectors.shape[0]))
     inverse_eigenvectors = torch.pinverse(eigenvectors)
 
     for x in range(x_range):
         for y in range(y_range):
             mode_amplitude_map[x, y, :] = (
                 torch.real(
-                    inverse_eigenvectors
+                    inverse_eigenvectors.to(torch.complex64)
                     @ model.encode(get_state(data[:, :, x, y], 0)).to(torch.complex64)
                 )
                 .detach()
@@ -64,7 +64,7 @@ def compute_mode_amplitude_map_linear(
         for y in range(y_range):
             mode_amplitude_map[x, y, :] = (
                 torch.real(
-                    inverse_eigenvectors
+                    inverse_eigenvectors.to(torch.complex64)
                     @ get_state(data[:, :, x, y], 0).to(torch.complex64)
                 )
                 .detach()

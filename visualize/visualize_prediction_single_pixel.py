@@ -125,7 +125,9 @@ def main():
 
     slider.on_changed(update)
     ax.legend()
-    plt.title(f"{args.mode}, pixel {x}, {y} from {os.path.split(args.data_path)[-1].split('.')[0]}")
+    plt.title(
+        f"{args.mode}, pixel {x}, {y} from {os.path.split(args.data_path)[-1].split('.')[0]}"
+    )
     plt.show()
 
 

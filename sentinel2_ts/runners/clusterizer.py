@@ -78,7 +78,7 @@ class Clusterizer:
             n_components=nb_components,
             covariance_type=covariance_type,
             random_state=0,
-            reg_covar=1e-3,
+            max_iter=1000,
         )
 
         return gmm.fit_predict(data_cluster).reshape((x, y))
@@ -119,3 +119,32 @@ class Clusterizer:
         data_cluster = data.reshape((-1, bands))
         clusterer = DBSCAN(metric="cosine")
         return clusterer.fit_predict(data_cluster).reshape((x, y))
+
+    def proba_gmm(
+        self,
+        data: ArrayLike,
+        nb_components: int = None,
+        covariance_type: str = None,
+    ) -> ArrayLike:
+        """
+        Clusterize the data using Gaussian Mixture Model
+
+        Args:
+            data (ArrayLike): Data to cluster
+
+        Returns:
+            ArrayLike: Clustering of the data
+        """
+        x, y, bands = data.shape
+        data_cluster = data.reshape((-1, bands))
+        if nb_components is None or covariance_type is None:
+            nb_components, covariance_type = self.__grid_search_gmm(data_cluster)
+
+        gmm = GaussianMixture(
+            n_components=nb_components,
+            covariance_type=covariance_type,
+            random_state=0,
+            max_iter=1000,
+        )
+        gmm.fit(data_cluster)
+        return gmm.predict_proba(data_cluster).reshape((x, y, nb_components))

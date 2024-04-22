@@ -86,7 +86,7 @@ def main():
         mse = torch.mean(squarred_error, dim=(1, 2))
         mse_map[x, :] = mse.cpu().detach().numpy()
 
-    print(f"Total MSE: {total_mse/(x_range*y_range*100*10):.4f}")
+    print(f"Total MSE: {1e3 * total_mse/(x_range*y_range*100*10) :.4f}")
 
     plt.imshow(mse_map)
     plt.axis("off")

@@ -2,6 +2,7 @@ import argparse
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
+from matplotlib.widgets import Slider
 from sentinel2_ts.runners.clusterizer import Clusterizer
 from sentinel2_ts.utils.process_data import scale_data, get_all_states_at_time
 from sentinel2_ts.utils.mode_amplitude_map import (
@@ -76,25 +77,36 @@ def main():
             )
 
     clusterizer = Clusterizer()
-    match args.cluster_mode:
-        case "kmeans":
-            cluster_map_dmd = clusterizer.clusterize_kmeans(
-                mode_amplitude_map, nb_clusters=args.nb_clusters
-            )
-        case "gmm":
-            cluster_map_dmd = clusterizer.clusterize_gmm(
-                mode_amplitude_map,
-                nb_components=args.nb_components,
-                covariance_type=args.covariance_type,
-            )
-        case "dbscan":
-            cluster_map_dmd = clusterizer.clusterize_dbscan(mode_amplitude_map)
-        case _:
-            raise ValueError("Invalid cluster mode")
+    proba_map = clusterizer.proba_gmm(
+        mode_amplitude_map,
+        nb_components=args.nb_components,
+        covariance_type=args.covariance_type,
+    )
 
     fig, ax = plt.subplots(1, 1)
-    ax.imshow(cluster_map_dmd)
+    plt.subplots_adjust(bottom=0.25)  # Adjust bottom to make room for the slider
+    im = ax.imshow(proba_map[:, :, 0])
     ax.set_title("Clustering on data represented in the eigenvector basis")
+
+    slider_ax = plt.axes(
+        [0.25, 0.1, 0.65, 0.03], facecolor="lightgoldenrodyellow"
+    )  # Define the slider's position and size
+    slider = Slider(
+        slider_ax,
+        "Component index",
+        0,
+        args.nb_components - 1,
+        valinit=0,
+        valstep=1,
+    )  # Define the slider itself
+
+    def update(val):
+        image_index = slider.val
+        im.set_data(proba_map[:, :, int(image_index)])
+        fig.canvas.draw_idle()  # Redraw the plot
+
+    slider.on_changed(update)  # Call update when the slider value is changed
+    plt.colorbar(im)
     plt.show()
 
 

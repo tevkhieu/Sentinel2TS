@@ -44,41 +44,46 @@ def main():
     data = np.load(args.data_path)
     data = scale_data(data, clipping=args.clipping)
 
-    if args.mode == "linear":
-        matrix_k = torch.load(args.path_matrix_k)["k.weight"].cpu().detach()
-        eigenvalues, eigenvectors = torch.linalg.eig(matrix_k)
+    match args.mode:
+        case "linear":
+            matrix_k = torch.load(args.path_matrix_k)["k.weight"].cpu().detach()
+            eigenvalues, eigenvectors = torch.linalg.eig(matrix_k)
 
-        scaled_mode_concrete = torch.abs(
-            torch.pinverse(eigenvectors)
-            @ get_state(data[:, :, 115, 195], 0).to(torch.complex64)
-        )
-        scaled_mode_forest = torch.abs(
-            torch.pinverse(eigenvectors)
-            @ get_state(data[:, :, 386, 339], 0).to(torch.complex64)
-        )
-
-    elif args.mode == "koopman_ae":
-        matrix_k = torch.load(args.path_matrix_k)
-        matrix_k = matrix_k.cpu().detach()
-        model = koopman_model_from_ckpt(args.ckpt_path, args.path_matrix_k)
-        eigenvalues, eigenvectors = torch.linalg.eig(matrix_k)
-
-        scaled_mode_concrete = (
-            torch.abs(
+            scaled_mode_concrete = torch.abs(
                 torch.pinverse(eigenvectors)
-                @ model.encode(get_state(data[:, :, 115, 195], 0)).to(torch.complex64)
+                @ get_state(data[:, :, 115, 195], 0).to(torch.complex64)
             )
-            .detach()
-            .numpy()
-        )
-        scaled_mode_forest = (
-            torch.abs(
+            scaled_mode_forest = torch.abs(
                 torch.pinverse(eigenvectors)
-                @ model.encode(get_state(data[:, :, 386, 339], 0)).to(torch.complex64)
+                @ get_state(data[:, :, 386, 339], 0).to(torch.complex64)
             )
-            .detach()
-            .numpy()
-        )
+
+        case "koopman_ae":
+            matrix_k = torch.load(args.path_matrix_k)
+            matrix_k = matrix_k.cpu().detach()
+            model = koopman_model_from_ckpt(args.ckpt_path, args.path_matrix_k)
+            eigenvalues, eigenvectors = torch.linalg.eig(matrix_k)
+
+            scaled_mode_concrete = (
+                torch.abs(
+                    torch.pinverse(eigenvectors)
+                    @ model.encode(get_state(data[:, :, 115, 195], 0)).to(
+                        torch.complex64
+                    )
+                )
+                .detach()
+                .numpy()
+            )
+            scaled_mode_forest = (
+                torch.abs(
+                    torch.pinverse(eigenvectors)
+                    @ model.encode(get_state(data[:, :, 386, 339], 0)).to(
+                        torch.complex64
+                    )
+                )
+                .detach()
+                .numpy()
+            )
 
     # filter by eigenvalues in the upper plane of the complex plane
     eigenvectors = eigenvectors[:, eigenvalues.imag > 0]

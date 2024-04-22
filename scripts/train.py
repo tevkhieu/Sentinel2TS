@@ -94,25 +94,28 @@ def main():
         ),
     )
 
-    if args.mode == "lstm":
-        model = LitLSTM(expermiment_name=args.experiment_name, time_span=args.time_span)
-    elif args.mode == "linear":
-        model = LitLinear(size=args.size, experiment_name=args.experiment_name)
-    elif args.mode == "koopman_ae":
-        model = LitKoopmanAE(
-            size=args.size,
-            experiment_name=args.experiment_name,
-            time_span=args.time_span,
-            device=args.device,
-        )
-    elif args.mode == "unmixer":
-        model = LitKoopmanUnmixer(
-            size=args.size,
-            experiment_name=args.experiment_name,
-            latent_dim=args.latent_dim,
-            time_span=args.time_span,
-            device=args.device,
-        )
+    match args.mode:
+        case "lstm":
+            model = LitLSTM(
+                expermiment_name=args.experiment_name, time_span=args.time_span
+            )
+        case "linear":
+            model = LitLinear(size=args.size, experiment_name=args.experiment_name)
+        case "koopman_ae":
+            model = LitKoopmanAE(
+                size=args.size,
+                experiment_name=args.experiment_name,
+                time_span=args.time_span,
+                device=args.device,
+            )
+        case "unmixer":
+            model = LitKoopmanUnmixer(
+                size=args.size,
+                experiment_name=args.experiment_name,
+                latent_dim=args.latent_dim,
+                time_span=args.time_span,
+                device=args.device,
+            )
 
     trainer.fit(
         model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader

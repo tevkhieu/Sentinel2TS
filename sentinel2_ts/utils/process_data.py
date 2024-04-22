@@ -99,3 +99,22 @@ def get_state_all_data(data: ArrayLike) -> ArrayLike:
     states = torch.concatenate((reflectance, reflectance_diff), axis=1)
 
     return states.transpose(1, 2).transpose(2, 3)
+
+
+def get_all_states_at_time(data: ArrayLike, t: int) -> ArrayLike:
+    """
+    Get all states at a certain time point
+
+    Args:
+        data (ArrayLike): Raw array of data containing the time series of reflectance
+        t (int): time point
+
+    Returns:
+        states (ArrayLike): All states at time point t
+    """
+    reflectance = Tensor(data[t])
+    reflectance_diff = Tensor(data[t] - data[t - 1])
+
+    states = torch.cat((reflectance, reflectance_diff), dim=1)
+
+    return states
