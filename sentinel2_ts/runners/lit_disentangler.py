@@ -24,11 +24,14 @@ class LitDisentangler(L.LightningModule):
         self.size = size
         self.num_classes = num_classes
         self.spectral_disentangler = SpectralDisentangler(size, num_classes=num_classes)
-        self.abundance_disentangler = AbundanceDisentangler(size, num_classes=num_classes)
+        self.abundance_disentangler = AbundanceDisentangler(
+            size, num_classes=num_classes
+        )
         self.experiment_name = experiment_name
         self.val_loss = 1e5
         self.lr = lr
         self.criterion = nn.MSELoss()
+        self.kl_div_loss = nn.KLDivLoss()
         self.save_dir = os.path.join("models", self.experiment_name)
         os.makedirs(self.save_dir, exist_ok=True)
 
@@ -37,7 +40,8 @@ class LitDisentangler(L.LightningModule):
         phase: str,
         observed_states: Tensor,
     ) -> tuple[Tensor, dict[str, Tensor]]:
-        predicted_specters = self.spectral_disentangler(observed_states)
+        z, mu, sigma = self.spectral_disentangler.encode(observed_states)
+        predicted_specters = self.spectral_disentangler.decode(z.view(z.size(0), 64, -1))
         predicted_specters = predicted_specters.view(
             predicted_specters.size(0), self.num_classes, self.size, -1
         )
@@ -48,10 +52,19 @@ class LitDisentangler(L.LightningModule):
 
         predicted_states = torch.sum(predicted_abundances * predicted_specters, dim=1)
 
-        loss = self.criterion(predicted_states, observed_states)
-        self.log(f"{phase} loss", loss)
+        recon_loss = self.criterion(predicted_states, observed_states)
+        kld_loss = 150 * torch.mean(
+            -0.5 * torch.sum(1 + sigma - mu**2 - sigma.exp(), dim=1), dim=0
+        )
 
-        return loss, {f"{phase} loss": loss}
+        total_loss = recon_loss + kld_loss
+        loss_dict = {
+            f"{phase} recon_loss": recon_loss,
+            f"{phase} kld_loss": kld_loss,
+            f"{phase} total_loss": total_loss,
+        }
+
+        return total_loss, loss_dict
 
     def training_step(self, batch, batch_idx) -> Tensor:
         observed_states = batch

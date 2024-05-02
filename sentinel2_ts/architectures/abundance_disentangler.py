@@ -23,8 +23,10 @@ class AbundanceDisentangler(nn.Module):
 
         return out
 
+
 if __name__ == "__main__":
     import torch
+
     model = AbundanceDisentangler()
     x = torch.randn(512, 20, 342)
     print(model(x).shape)

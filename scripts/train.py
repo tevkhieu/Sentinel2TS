@@ -1,7 +1,13 @@
 import os
 import argparse
 import lightning as L
-from sentinel2_ts.runners import LitKoopmanAE, LitKoopmanUnmixer, LitLinear, LitLSTM, LitDisentangler
+from sentinel2_ts.runners import (
+    LitKoopmanAE,
+    LitKoopmanUnmixer,
+    LitLinear,
+    LitLSTM,
+    LitDisentangler,
+)
 from sentinel2_ts.utils.get_dataloader import get_dataloader
 
 

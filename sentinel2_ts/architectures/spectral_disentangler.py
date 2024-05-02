@@ -20,10 +20,7 @@ class SpectralDisentangler(nn.Module):
         )
 
     def forward(self, x):
-        z = self.encode(x).flatten(start_dim=1)
-
-        mu, sigma = self.fc_mu(z), self.fc_sigma(z)
-        z = self.reparametrize(mu, sigma)
+        z, _, _ = self.encode(x)
 
         out = self.decode(z.reshape(z.size(0), 64, -1))
 
@@ -40,15 +37,20 @@ class SpectralDisentangler(nn.Module):
         return out
 
     def encode(self, x):
-        out = self.conv1(x)
-        out = F.leaky_relu(out)
-        out = F.max_pool1d(out, kernel_size=2, stride=2)
+        z = self.conv1(x)
+        z = F.leaky_relu(z)
+        z = F.max_pool1d(z, kernel_size=2, stride=2)
 
-        out = self.conv2(out)
-        out = F.leaky_relu(out)
-        out = F.max_pool1d(out, kernel_size=2, stride=2)
+        z = self.conv2(z)
+        z = F.leaky_relu(z)
+        z = F.max_pool1d(z, kernel_size=2, stride=2)
 
-        return out
+        z = z.view(z.size(0), -1)
+
+        mu, sigma = self.fc_mu(z), self.fc_sigma(z)
+        z = self.reparametrize(mu, sigma)
+
+        return z, mu, sigma
 
     def reparametrize(self, mu, sigma):
         std = torch.exp(0.5 * sigma)
@@ -61,5 +63,10 @@ if __name__ == "__main__":
 
     model = SpectralDisentangler()
     model_input = torch.randn(512, 20, 342)
+    z, mu, sigma = model.encode(model_input)
+    print(z.shape)
+    print(mu.shape)
+    print(sigma.shape)
 
-    print(model(model_input).shape)
+    decoded = model.decode(z.view(512, 64, -1))
+    print(decoded.shape)
