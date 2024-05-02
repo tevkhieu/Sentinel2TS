@@ -4,7 +4,7 @@ import torch
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 from sentinel2_ts.runners.clusterizer import Clusterizer
-from sentinel2_ts.utils.process_data import scale_data, get_all_states_at_time
+from sentinel2_ts.data.process_data import scale_data, get_all_states_at_time
 from sentinel2_ts.utils.mode_amplitude_map import (
     compute_mode_amplitude_koopman,
     compute_mode_amplitude_map_linear,

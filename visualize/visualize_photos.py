@@ -5,7 +5,7 @@ from matplotlib.widgets import Slider
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from tqdm import tqdm
-from sentinel2_ts.utils.process_data import scale_data
+from sentinel2_ts.data.process_data import scale_data
 from numpy.typing import ArrayLike
 
 

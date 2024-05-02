@@ -1,7 +1,7 @@
 import os
 import argparse
 import lightning as L
-from sentinel2_ts.runners import LitKoopmanAE, LitKoopmanUnmixer, LitLinear, LitLSTM
+from sentinel2_ts.runners import LitKoopmanAE, LitKoopmanUnmixer, LitLinear, LitLSTM, LitDisentangler
 from sentinel2_ts.utils.get_dataloader import get_dataloader
 
 
@@ -56,6 +56,7 @@ def create_arg_parser():
         default=[512, 256, 32],
         help="Latent dimension",
     )
+    parser.add_argument("--data_mode", type=str, default=None, help="Data mode")
     return parser
 
 
@@ -65,6 +66,7 @@ def main():
 
     train_dataloader = get_dataloader(
         args.train_data_path,
+        data_mode=args.data_mode,
         batch_size=args.batch_size,
         time_span=args.time_span,
         dataset_len=512 * 512,
@@ -75,15 +77,16 @@ def main():
     )
     val_dataloader = get_dataloader(
         args.val_data_path,
+        data_mode=args.data_mode,
         dataset_len=512 * 51,
         batch_size=args.batch_size,
         time_span=args.time_span,
         shuffle=False,
         num_workers=2,
-        minimal_x=150,
-        maximal_x=300,
-        minimal_y=150,
-        maximal_y=300,
+        minimal_x=250,
+        maximal_x=400,
+        minimal_y=250,
+        maximal_y=400,
     )
 
     trainer = L.Trainer(
@@ -115,6 +118,12 @@ def main():
                 latent_dim=args.latent_dim,
                 time_span=args.time_span,
                 device=args.device,
+            )
+        case "spectral_disentangler":
+            model = LitDisentangler(
+                size=args.size,
+                num_classes=10,
+                experiment_name=args.experiment_name,
             )
 
     trainer.fit(

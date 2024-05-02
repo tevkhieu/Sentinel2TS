@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import tqdm
 from numpy.typing import ArrayLike
 
-from sentinel2_ts.utils.process_data import scale_data
+from sentinel2_ts.data.process_data import scale_data
 from sentinel2_ts.utils.visualize import axes_off
 
 

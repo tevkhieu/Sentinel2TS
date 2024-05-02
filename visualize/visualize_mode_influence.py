@@ -4,7 +4,7 @@ import argparse
 import torch
 
 from sentinel2_ts.utils.load_model import koopman_model_from_ckpt
-from sentinel2_ts.utils.process_data import scale_data, get_state
+from sentinel2_ts.data.process_data import scale_data, get_state
 
 
 def create_argparser():

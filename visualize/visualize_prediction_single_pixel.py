@@ -8,7 +8,7 @@ from matplotlib.widgets import Slider
 
 from sentinel2_ts.architectures import LSTM, Linear, KoopmanAE, KoopmanUnmixer
 from sentinel2_ts.utils.load_model import koopman_model_from_ckpt
-from sentinel2_ts.utils.process_data import get_state_from_data, scale_data
+from sentinel2_ts.data.process_data import get_state_from_data, scale_data
 
 
 def create_arg_parser():

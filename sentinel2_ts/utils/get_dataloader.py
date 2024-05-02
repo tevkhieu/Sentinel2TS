@@ -1,10 +1,11 @@
 from torch.utils.data.dataloader import DataLoader
 
-from sentinel2_ts.utils.sentinel_dataset import SentinelDataset
+from sentinel2_ts.data import SentinelDataset, UnmixingDataset
 
 
 def get_dataloader(
     path: str,
+    data_mode: str = None,
     time_span: int = 100,
     dataset_len: int = 512 * 512,
     batch_size: int = 64,
@@ -31,19 +32,37 @@ def get_dataloader(
     Returns:
         DataLoader: Dataloader of single point data
     """
-    return DataLoader(
-        SentinelDataset(
-            path,
-            time_prediction_length=time_span,
-            dataset_len=dataset_len,
-            minimal_x=minimal_x,
-            maximal_x=maximal_x,
-            minimal_y=minimal_y,
-            maximal_y=maximal_y,
-        ),
-        batch_size=batch_size,
-        shuffle=shuffle,
-        num_workers=num_workers,
-        pin_memory=pin_memory,
-        persistent_workers=True,
-    )
+    match data_mode:
+        case "spectral_disentangler":
+            return DataLoader(
+                UnmixingDataset(
+                    path,
+                    dataset_len=dataset_len,
+                    minimal_x=minimal_x,
+                    maximal_x=maximal_x,
+                    minimal_y=minimal_y,
+                    maximal_y=maximal_y,
+                ),
+                batch_size=batch_size,
+                shuffle=shuffle,
+                num_workers=num_workers,
+                pin_memory=pin_memory,
+                persistent_workers=True,
+            )
+        case _:
+            return DataLoader(
+                SentinelDataset(
+                    path,
+                    time_prediction_length=time_span,
+                    dataset_len=dataset_len,
+                    minimal_x=minimal_x,
+                    maximal_x=maximal_x,
+                    minimal_y=minimal_y,
+                    maximal_y=maximal_y,
+                ),
+                batch_size=batch_size,
+                shuffle=shuffle,
+                num_workers=num_workers,
+                pin_memory=pin_memory,
+                persistent_workers=True,
+            )

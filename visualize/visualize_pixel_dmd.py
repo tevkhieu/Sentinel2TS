@@ -5,7 +5,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 import matplotlib.pyplot as plt
 
-from sentinel2_ts.utils.process_data import scale_data
+from sentinel2_ts.data.process_data import scale_data
 from sentinel2_ts.utils.visualize import visualize_spectral_signature
 
 

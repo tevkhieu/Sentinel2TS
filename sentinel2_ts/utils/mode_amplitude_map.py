@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.typing import ArrayLike
 import torch
-from sentinel2_ts.utils.process_data import get_state
+from sentinel2_ts.data.process_data import get_state
 
 
 def compute_mode_amplitude_koopman(
