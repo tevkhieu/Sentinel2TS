@@ -37,7 +37,6 @@ def get_dataloader(
             return DataLoader(
                 UnmixingDataset(
                     path,
-                    dataset_len=dataset_len,
                     minimal_x=minimal_x,
                     maximal_x=maximal_x,
                     minimal_y=minimal_y,

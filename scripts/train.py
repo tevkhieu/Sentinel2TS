@@ -90,7 +90,7 @@ def main():
         shuffle=False,
         num_workers=2,
         minimal_x=250,
-        maximal_x=400,
+        maximal_x=300,
         minimal_y=250,
         maximal_y=400,
     )
@@ -128,7 +128,8 @@ def main():
         case "spectral_disentangler":
             model = LitDisentangler(
                 size=args.size,
-                num_classes=10,
+                latent_dim=64,
+                num_classes=8,
                 experiment_name=args.experiment_name,
             )
 
