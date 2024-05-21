@@ -3,7 +3,7 @@ import argparse
 import torch
 import matplotlib.pyplot as plt
 from sentinel2_ts.architectures.koopman_ae import KoopmanAE
-from sentinel2_ts.utils.visualize import visualize_spectral_signature
+from sentinel2_ts.utils.visualize import plot_all_spectral_signatures
 
 
 def create_argparser():
@@ -60,7 +60,8 @@ def main():
         model.load_state_dict(torch.load(args.ckpt_path))
         eigenvectors = model.decode(eigenvectors).detach().numpy()
 
-    visualize_spectral_signature(args, eigenvectors)
+    plot_all_spectral_signatures(args, eigenvectors)
+    plt.show()
 
 
 if __name__ == "__main__":

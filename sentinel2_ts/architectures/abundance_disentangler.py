@@ -3,9 +3,9 @@ import torch.nn.functional as F
 
 
 class AbundanceDisentangler(nn.Module):
-    def __init__(self, input_size=20, num_classes=5):
+    def __init__(self, size=20, num_classes=5):
         super(AbundanceDisentangler, self).__init__()
-        self.conv1 = nn.Conv1d(input_size, 32, kernel_size=3, stride=1, padding=1)
+        self.conv1 = nn.Conv1d(size, 32, kernel_size=3, stride=1, padding=1)
         self.conv2 = nn.Conv1d(32, 64, kernel_size=3, stride=1, padding=1)
         self.fc = nn.Linear(64 * (342 // 4), num_classes)
 

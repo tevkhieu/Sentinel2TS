@@ -55,6 +55,7 @@ class LitDisentangler(L.LightningModule):
         predicted_states = torch.sum(predicted_abundances * predicted_specters, dim=1)
 
         loss_dict = {}
+        loss_dict = self.__compute_sparsity_loss(phase, predicted_abundances, loss_dict)
         loss_dict = self.__compute_recon_loss(
             phase, predicted_states, observed_states, loss_dict
         )
@@ -95,13 +96,13 @@ class LitDisentangler(L.LightningModule):
             self.val_loss = loss
             torch.save(
                 self.model.state_dict(),
-                os.path.join(self.save_dir, f"best_spectral_disentangler.pt"),
+                os.path.join(self.save_dir, f"best_{self.experiment_name}.pt"),
             )
 
     def __compute_sparsity_loss(
         self, phase, predicted_abundances, loss_dict: dict[str, Tensor] = None
     ):
-        loss_dict[f"{phase}_sparsity_loss"] = torch.mean(
+        loss_dict[f"{phase}_sparsity_loss"] = 1e-2 * torch.mean(
             torch.abs(predicted_abundances)
         )
         return loss_dict

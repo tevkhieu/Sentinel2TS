@@ -4,11 +4,9 @@ import torch.nn.functional as F
 
 
 class SpectralDisentangler(nn.Module):
-    def __init__(
-        self, input_size: int = 20, latent_dim: int = 64, num_classes: int = 5
-    ):
+    def __init__(self, size: int = 20, latent_dim: int = 64, num_classes: int = 5):
         super(SpectralDisentangler, self).__init__()
-        self.conv1 = nn.Conv1d(input_size, 32, kernel_size=3, stride=1, padding=1)
+        self.conv1 = nn.Conv1d(size, 32, kernel_size=3, stride=1, padding=1)
         self.conv2 = nn.Conv1d(32, 64, kernel_size=3, stride=1, padding=1)
 
         self.fc_mu = nn.Linear(64 * (342 // 4), latent_dim * (342 // 4))

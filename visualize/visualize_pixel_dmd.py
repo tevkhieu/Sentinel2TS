@@ -6,7 +6,7 @@ from numpy.typing import ArrayLike
 import matplotlib.pyplot as plt
 
 from sentinel2_ts.data.process_data import scale_data
-from sentinel2_ts.utils.visualize import visualize_spectral_signature
+from sentinel2_ts.utils.visualize import plot_all_spectral_signatures
 
 
 def create_argparser():
@@ -77,9 +77,11 @@ def main():
     ax[0].vlines(2 * np.pi / 73, 0.96, 1, colors="red", linestyles="dashed")
     plt.colorbar(scatter_plot)
 
-    visualize_spectral_signature(ax[1], Phi, eigenvalues)
+    plot_all_spectral_signatures(ax[1], Phi, eigenvalues)
+    ax.legend()
+    ax.set_xlabel("Wavelength (nm)")
+    ax.set_ylabel("Amplitude")
     plt.show()
-
 
 if __name__ == "__main__":
     main()
