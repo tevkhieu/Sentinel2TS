@@ -23,6 +23,7 @@ def plot_all_spectral_signatures(ax, eigenvectors):
             # label=f"Period: {5 * 2 * np.pi/ np.angle(eigenvalues[i]): .4f} days",
         )
 
+
 def plot_single_spectral_signature(ax, spectral_signature):
     wavelength = [
         492.4,
@@ -38,6 +39,7 @@ def plot_single_spectral_signature(ax, spectral_signature):
     ]
     band_order = [0, 1, 2, 6, 3, 4, 5, 7, 8, 9]
     ax.plot(wavelength, spectral_signature[band_order])
+
 
 def axes_off(ax):
     for a in ax:

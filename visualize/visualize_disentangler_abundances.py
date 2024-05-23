@@ -4,7 +4,7 @@ import torch
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 from tqdm import tqdm
-from sentinel2_ts.data.process_data import scale_data, get_state_all_data
+from sentinel2_ts.dataset.process_data import scale_data, get_state_all_data
 from sentinel2_ts.architectures import Disentangler
 
 
@@ -17,6 +17,9 @@ def create_argparser():
     )
     parser.add_argument("--device", type=str, default="cuda:0", help="Device to use")
     parser.add_argument("--num_classes", type=int, default=5, help="Number of classes")
+    parser.add_argument(
+        "--abundance_mode", type=str, default="conv", help="Abundance mode"
+    )
     return parser
 
 
@@ -28,9 +31,13 @@ def main():
     data = scale_data(data, clipping=args.clipping)
     time_range, x_range, y_range = data.shape[0], data.shape[2], data.shape[3]
     abundance_map = np.zeros((x_range, y_range, args.num_classes), dtype=np.float16)
-    model = Disentangler(size=20, latent_dim=64, num_classes=args.num_classes).to(
-        args.device
-    )
+    total_map = np.zeros((x_range, y_range), dtype=np.float16)
+    model = Disentangler(
+        size=20,
+        latent_dim=64,
+        num_classes=args.num_classes,
+        abundance_mode=args.abundance_mode,
+    ).to(args.device)
     model.load_state_dict(torch.load(args.ckpt_path))
     model.eval()
     state_map = (
@@ -44,10 +51,18 @@ def main():
             .numpy()
         )
 
-    # TODO do this better when i don't want to sleep
-    for x in range(x_range):
-        for y in range(y_range):
-            abundance_map[x, y, :] /= np.sum(abundance_map[x, y, :])
+    # Normalize if necessary
+    if np.max(abundance_map) > 1e6:  # Example threshold
+        abundance_map /= np.max(abundance_map)
+
+    # Safe division
+    with np.errstate(over="ignore", divide="ignore"):
+        for x in range(abundance_map.shape[0]):
+            for y in range(abundance_map.shape[1]):
+                total = np.sum(abundance_map[x, y, :]) + 1e-6
+                total_map[x, y] = total
+                if not np.isinf(total) and not np.isnan(total):
+                    abundance_map[x, y, :] /= total
 
     fig, ax = plt.subplots(nrows=1, ncols=1)
     plt.subplots_adjust(
@@ -74,6 +89,10 @@ def main():
     endmember_slider.on_changed(update)
 
     plt.colorbar(im)
+    plt.show()
+
+    plt.imshow(total_map)
+    plt.colorbar()
     plt.show()
 
 

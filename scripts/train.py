@@ -63,6 +63,7 @@ def create_arg_parser():
         help="Latent dimension",
     )
     parser.add_argument("--data_mode", type=str, default=None, help="Data mode")
+    parser.add_argument("--abundance_mode", type=str, default="conv", help="Abundance mode")
     return parser
 
 
@@ -131,6 +132,7 @@ def main():
                 latent_dim=64,
                 num_classes=8,
                 experiment_name=args.experiment_name,
+                abundance_mode=args.abundance_mode,
             )
 
     trainer.fit(

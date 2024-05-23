@@ -4,9 +4,10 @@ import torch
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 from tqdm import tqdm
-from sentinel2_ts.data.process_data import scale_data, get_state_time_series
+from sentinel2_ts.dataset.process_data import scale_data, get_state_time_series
 from sentinel2_ts.architectures import Disentangler
 from sentinel2_ts.utils.visualize import plot_single_spectral_signature
+
 
 def create_argparser():
     parser = argparse.ArgumentParser()
@@ -23,7 +24,9 @@ def create_argparser():
     parser.add_argument(
         "--y", type=int, default=None, help="y value where to compute prediction"
     )
-
+    parser.add_argument(
+        "--abundance_mode", type=str, default="conv", help="Abundance mode"
+    )
     return parser
 
 
@@ -33,28 +36,30 @@ def main():
 
     data = np.load(args.data_path)
     pixel_data = scale_data(data, clipping=args.clipping)[:, :, args.x, args.y]
-    time_range, x_range, y_range = data.shape[0], data.shape[2], data.shape[3]
-    nb_band = 10
-    specters_ts = np.zeros((nb_band, time_range), dtype=np.float16)
-    model = Disentangler(size=20, latent_dim=64, num_classes=args.num_classes).to(
-        args.device
-    )
+    model = Disentangler(
+        size=20,
+        latent_dim=64,
+        num_classes=args.num_classes,
+        abundance_mode=args.abundance_mode,
+    ).to(args.device)
     model.load_state_dict(torch.load(args.ckpt_path))
     model.eval()
     state = get_state_time_series(pixel_data, 1, 342).T.unsqueeze(0).to(args.device)
-    disentangled_specters = model.spectral_disentangler(state).cpu().detach().squeeze().numpy()
+    disentangled_specters = (
+        model.spectral_disentangler(state).cpu().detach().squeeze().numpy()
+    )
     disentangled_specters = disentangled_specters.reshape(args.num_classes, 20, -1)
 
     fig, ax = plt.subplots(nrows=1, ncols=1)
     plt.subplots_adjust(bottom=0.25)  # Adjust bottom to make room for the time_slider
-    
+
     plot_single_spectral_signature(ax, disentangled_specters[0, :, 0])
 
     time_slider_ax = plt.axes(
         [0.25, 0.1, 0.65, 0.03], facecolor="lightgoldenrodyellow"
     )  # Define the time_slider's position and siz
     time_slider = Slider(
-        time_slider_ax, "Time", 0, 342, valinit=0, valstep=1
+        time_slider_ax, "Time", 0, 342 - 1, valinit=0, valstep=1
     )  # Define the time_slider itself
 
     class_slider_ax = plt.axes(
@@ -64,14 +69,13 @@ def main():
         class_slider_ax, "Class", 0, args.num_classes - 1, valinit=0, valstep=1
     )
 
-
     def update(val):
         time = int(time_slider.val)
         class_idx = int(class_slider.val)
         ax.clear()
         plot_single_spectral_signature(ax, disentangled_specters[class_idx, :, time])
         fig.canvas.draw_idle()  # Redraw the plot
-    
+
     time_slider.on_changed(update)
     class_slider.on_changed(update)
     ax.legend()

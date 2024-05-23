@@ -14,16 +14,12 @@ class LSTM(nn.Module):
         self.fc = nn.Linear(hidden_size, output_size)
 
     def forward(self, x, future=0, n_steps=1):
-        outputs = []
+        x = x.transpose(1, 2)
         batch_size = x.size(0)
         h_t = torch.zeros(1, batch_size, self.hidden_size).to(x.device)
         c_t = torch.zeros(1, batch_size, self.hidden_size).to(x.device)
-        # Iterate through time steps
-        for i in range(future):
-            out, (h_t, c_t) = self.lstm(x[:, -1:, :], (h_t, c_t))
-            out = self.fc(out)
-            outputs.append(out)
-            x = torch.cat((x, out), dim=1)
+        for i in range(x.size(1) - 1):
+            out, (h_t, c_t) = self.lstm(x[:, i : i + 1, :], (h_t, c_t))
+        out = self.fc(out)
 
-        outputs = torch.cat(outputs, dim=1)
-        return outputs
+        return out.squeeze(1)

@@ -19,6 +19,7 @@ class LitDisentangler(L.LightningModule):
         latent_dim: int,
         num_classes: int,
         experiment_name: str,
+        abundance_mode: str = "conv",
         lr: int = 1e-5,
         beta: float = 150.0,
     ) -> None:
@@ -27,7 +28,7 @@ class LitDisentangler(L.LightningModule):
         self.latent_dim = latent_dim
         self.num_classes = num_classes
         self.beta = beta
-        self.model = Disentangler(size, latent_dim, num_classes)
+        self.model = Disentangler(size, latent_dim, num_classes, abundance_mode)
         self.experiment_name = experiment_name
         self.val_loss = 1e5
         self.lr = lr
@@ -52,7 +53,9 @@ class LitDisentangler(L.LightningModule):
             predicted_abundances.size() + (1, 1)
         )
 
-        predicted_states = torch.sum(predicted_abundances * predicted_specters, dim=1)
+        predicted_states = torch.sum(
+            predicted_abundances * predicted_specters, dim=1
+        ).transpose(1, 2)
 
         loss_dict = {}
         loss_dict = self.__compute_sparsity_loss(phase, predicted_abundances, loss_dict)

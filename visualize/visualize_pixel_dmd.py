@@ -5,7 +5,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 import matplotlib.pyplot as plt
 
-from sentinel2_ts.data.process_data import scale_data
+from sentinel2_ts.dataset.process_data import scale_data
 from sentinel2_ts.utils.visualize import plot_all_spectral_signatures
 
 
@@ -82,6 +82,7 @@ def main():
     ax.set_xlabel("Wavelength (nm)")
     ax.set_ylabel("Amplitude")
     plt.show()
+
 
 if __name__ == "__main__":
     main()

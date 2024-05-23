@@ -5,7 +5,7 @@ import torch
 
 
 from sentinel2_ts.runners.data_assimilation import DataAssimilation
-from sentinel2_ts.data.process_data import scale_data
+from sentinel2_ts.dataset.process_data import scale_data
 from sentinel2_ts.architectures.lstm import LSTM
 from sentinel2_ts.architectures.linear import Linear
 

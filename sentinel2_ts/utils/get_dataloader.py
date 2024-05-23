@@ -1,6 +1,6 @@
 from torch.utils.data.dataloader import DataLoader
 
-from sentinel2_ts.data import SentinelDataset, UnmixingDataset
+from sentinel2_ts.dataset import SentinelDataset, UnmixingDataset
 
 
 def get_dataloader(

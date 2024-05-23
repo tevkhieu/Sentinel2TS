@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 from tqdm import tqdm
 from sentinel2_ts.utils.load_model import koopman_model_from_ckpt
-from sentinel2_ts.data.process_data import scale_data, get_state_all_data
+from sentinel2_ts.dataset.process_data import scale_data, get_state_all_data
 
 
 def create_argparser():

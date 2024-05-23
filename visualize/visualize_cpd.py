@@ -4,7 +4,7 @@ import tensorly as tl
 import matplotlib.pyplot as plt
 import torch
 from tensorly.decomposition import CP_NN_HALS
-from sentinel2_ts.data.process_data import scale_data
+from sentinel2_ts.dataset.process_data import scale_data
 
 
 def create_arg_parse():
