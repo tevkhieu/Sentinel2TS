@@ -47,8 +47,5 @@ class UnmixingDataset(Dataset):
         )
         data = np.load(data_path)
 
-        observed_state_time_series = get_state_time_series(
-            data, 1, 342
-        )
+        observed_state_time_series = get_state_time_series(data, 1, 342)
         return observed_state_time_series.swapaxes(0, 1)
-

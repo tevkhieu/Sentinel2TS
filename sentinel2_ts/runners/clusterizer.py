@@ -2,6 +2,7 @@ from sklearn.cluster import KMeans, DBSCAN
 from sklearn.metrics import silhouette_score
 from sklearn.mixture import GaussianMixture
 from sklearn.model_selection import GridSearchCV
+from sklearn.manifold import TSNE
 from numpy.typing import ArrayLike
 import matplotlib.pyplot as plt
 import numpy as np
@@ -148,3 +149,19 @@ class Clusterizer:
         )
         gmm.fit(data_cluster)
         return gmm.predict_proba(data_cluster).reshape((x, y, nb_components))
+
+    def clusterize_tsne(self, data: ArrayLike) -> ArrayLike:
+        """
+        Clusterize the data using t-SNE
+
+        Args:
+            data (ArrayLike): Data to cluster
+
+        Returns:
+            ArrayLike: Clustering of the data
+        """
+
+        x, y, bands = data.shape
+        data_cluster = data.reshape((-1, bands))
+        tsne = TSNE(n_components=2, random_state=0, perplexity=10, learning_rate=500)
+        return tsne.fit_transform(data_cluster)

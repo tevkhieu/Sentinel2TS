@@ -21,7 +21,7 @@ def get_dataloader(
     Create a Dataloader object from single point data
 
     Args:
-        path (str): path to single point data
+        path (str): path to single point data folder
         time_span (int, optional): length of the target sequences. Defaults to 100.
         dataset_len (int, optional): number of data point used for training. Defaults to 512*512.
         batch_size (int, optional): batch size. Defaults to 64.

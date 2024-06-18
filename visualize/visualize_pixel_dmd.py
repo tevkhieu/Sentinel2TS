@@ -14,7 +14,7 @@ def create_argparser():
     parser.add_argument(
         "--data_path",
         type=str,
-        default="data/fontainebleau_interpolated.npy",
+        default="data/artificial_data.npy",
         help="Path to the data",
     )
     parser.add_argument("--x", type=int, default=250, help="x coordinate")
@@ -77,10 +77,10 @@ def main():
     ax[0].vlines(2 * np.pi / 73, 0.96, 1, colors="red", linestyles="dashed")
     plt.colorbar(scatter_plot)
 
-    plot_all_spectral_signatures(ax[1], Phi, eigenvalues)
-    ax.legend()
-    ax.set_xlabel("Wavelength (nm)")
-    ax.set_ylabel("Amplitude")
+    plot_all_spectral_signatures(ax[1], Phi)
+    fig.legend()
+    ax[1].set_xlabel("Wavelength (nm)")
+    ax[1].set_ylabel("Amplitude")
     plt.show()
 
 

@@ -33,6 +33,10 @@ def create_arg_parser():
         default=0,
         help="Initial time from which the visualization begin",
     )
+    parser.add_argument(
+        "--clipping", type=bool, default=True, help="Clipping the data or not"
+    )
+
     return parser
 
 
@@ -42,23 +46,24 @@ def main():
     data = np.load(args.data_path)[
         args.initial_time : args.initial_time + args.time_span, :, :, :
     ].transpose(0, 2, 3, 1)
-    data = np.clip(scale_data(data, clipping=True) * 3, a_max=1, a_min=0)
+    data = np.clip(scale_data(data, clipping=args.clipping) * 3, a_max=1, a_min=0)
     data_pca = np.zeros_like(data)[:, :, :, :3]
 
     # Compute PCA to visualize the modes on the data
-    pca = PCA(n_components=3)
-    pca.fit(data[0].reshape(-1, 10))
-    for t in tqdm(range(data.shape[0])):
-        data_pca[t] = pca.transform(data[t, :, :, :].reshape(-1, 10)).reshape(
-            500, 500, 3
-        )
+    # pca = PCA(n_components=3)
+    # pca.fit(data[0].reshape(-1, 10))
+    # for t in tqdm(range(data.shape[0])):
+    #     data_pca[t] = pca.transform(data[t, :, :, :].reshape(-1, 10)).reshape(
+    #         500, 500, 3
+    #     )
 
-    fig, ax = plt.subplots(1, 2)
+    fig, ax = plt.subplots(1, 1)
     plt.subplots_adjust(bottom=0.25)  # Adjust bottom to make room for the slider
     data = data[:, :, :, [2, 1, 0]].clip(0, 1)
     data_pca = data_pca.clip(0, 1)
-    im = ax[0].imshow(data[0])
-    im_pca = ax[1].imshow(data_pca[0])
+    im = ax.imshow(data[0])
+    # im = ax[0].imshow(data[0])
+    # im_pca = ax[1].imshow(data_pca[0])
     slider_ax = plt.axes(
         [0.25, 0.1, 0.65, 0.03], facecolor="lightgoldenrodyellow"
     )  # Define the slider's position and size
@@ -74,16 +79,13 @@ def main():
     def update(val):
         image_index = slider.val
         im.set_data(data[int(image_index)])
-        im_pca.set_data(data_pca[int(image_index)])
+        # im_pca.set_data(data_pca[int(image_index)])
         fig.canvas.draw_idle()  # Redraw the plot
 
     slider.on_changed(update)  # Call update when the slider value is changed
 
     if args.show_data_training_zone:
         draw_training_zone(ax, 60, 200, 100, 250)
-
-    for axis in ax:
-        axis.axis("off")
 
     plt.show()
 

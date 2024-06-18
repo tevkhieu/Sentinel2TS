@@ -1,5 +1,6 @@
 import os
 import argparse
+import numpy as np
 import lightning as L
 from sentinel2_ts.runners import (
     LitKoopmanAE,
@@ -63,7 +64,12 @@ def create_arg_parser():
         help="Latent dimension",
     )
     parser.add_argument("--data_mode", type=str, default=None, help="Data mode")
-    parser.add_argument("--abundance_mode", type=str, default="conv", help="Abundance mode")
+    parser.add_argument(
+        "--abundance_mode", type=str, default="conv", help="Abundance mode"
+    )
+    parser.add_argument(
+        "--path_endmembers", type=str, default=None, help="Path to endmembers"
+    )
     return parser
 
 
@@ -130,7 +136,16 @@ def main():
             model = LitDisentangler(
                 size=args.size,
                 latent_dim=64,
-                num_classes=8,
+                num_classes=4,
+                experiment_name=args.experiment_name,
+                abundance_mode=args.abundance_mode,
+            )
+        case "true_specter_disentangler":
+            model = LitDisentangler(
+                size=args.size,
+                latent_dim=64,
+                num_classes=5,
+                endmembers=np.load(args.path_endmembers),
                 experiment_name=args.experiment_name,
                 abundance_mode=args.abundance_mode,
             )

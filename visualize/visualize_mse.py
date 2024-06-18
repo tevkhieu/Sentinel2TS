@@ -47,6 +47,7 @@ def create_parser():
         default=[512, 256, 32],
         help="Latent dimension",
     )
+    parser.add_argument("--scale_data", type=bool, default=True, help="Scale data")
 
     return parser
 
@@ -79,7 +80,8 @@ def main():
     model.eval()
 
     data = np.load(args.data_path)
-    data = scale_data(data, clipping=args.clipping)
+    if args.scale_data:
+        data = scale_data(data, clipping=args.clipping)
 
     x_range, y_range = data.shape[2], data.shape[3]
     mse_map = np.zeros((x_range, y_range))
@@ -110,7 +112,11 @@ def main():
             ) ** 2
 
         total_mse += squarred_error.sum()
-        mse = torch.mean(squarred_error, dim=(0, 2))
+        match args.mode:
+            case "disentangler":
+                mse = torch.mean(squarred_error, dim=(1, 2))
+            case "_":
+                mse = torch.mean(squarred_error, dim=(0, 2))
         mse_map[x, :] = mse.cpu().detach().numpy()
 
     print(f"Total MSE: {1e3 * total_mse/(x_range*y_range*100*10) :.4f}")

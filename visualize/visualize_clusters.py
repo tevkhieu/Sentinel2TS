@@ -48,6 +48,7 @@ def create_argparser():
         default=[512, 256, 8],
         help="Latent dimension of the Koopman Autoencoder",
     )
+    parser.add_argument("--show_tsne", type=bool, default=False, help="Show t-SNE plot")
 
     return parser
 
@@ -96,6 +97,13 @@ def main():
     ax.imshow(cluster_map_dmd)
     ax.set_title("Clustering on data represented in the eigenvector basis")
     plt.show()
+
+    if args.show_tsne:
+        X_tsne = clusterizer.clusterize_tsne(mode_amplitude_map)
+        fig, ax = plt.subplots(1, 1)
+        ax.scatter(X_tsne[:, 0], X_tsne[:, 1], c=cluster_map_dmd.flatten(), s=1)
+        fig.legend()
+        plt.show()
 
 
 def extract_mode_amplitude_map(args, data, x_range, y_range):

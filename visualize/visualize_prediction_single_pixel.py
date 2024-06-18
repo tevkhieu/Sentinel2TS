@@ -50,6 +50,7 @@ def create_arg_parser():
         help="Path to the matrix K (only for koopman_ae)",
     )
     parser.add_argument("--latent_dim", type=int, nargs="+", default=[512, 256, 32])
+    parser.add_argument("--scale_data", type=bool, default=True, help="Scale data")
 
     return parser
 
@@ -77,7 +78,8 @@ def main():
     model.eval()
 
     data = np.load(args.data_path)
-    data = scale_data(data, clipping=False)
+    if args.scale_data:
+        data = scale_data(data, clipping=False)
 
     x = rd.randint(0, data.shape[2]) if args.x is None else args.x
     y = rd.randint(0, data.shape[3]) if args.y is None else args.y

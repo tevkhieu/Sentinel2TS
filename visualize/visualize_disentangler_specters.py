@@ -27,6 +27,7 @@ def create_argparser():
     parser.add_argument(
         "--abundance_mode", type=str, default="conv", help="Abundance mode"
     )
+    parser.add_argument("--endmember", type=str, default=None, help="Path to endmember")
     return parser
 
 
@@ -82,6 +83,7 @@ def main():
     ax.set_xlabel("Wavelength (nm)")
     ax.set_ylabel("Amplitude")
     plt.show()
+
 
 if __name__ == "__main__":
     main()
