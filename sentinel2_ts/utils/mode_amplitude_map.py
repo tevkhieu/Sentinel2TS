@@ -2,6 +2,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 import torch
 from sentinel2_ts.dataset.process_data import get_state
+from sentinel2_ts.utils.load_model import koopman_model_from_ckpt
 
 
 def compute_mode_amplitude_koopman(
@@ -70,4 +71,18 @@ def compute_mode_amplitude_map_linear(
                 .detach()
                 .numpy()
             )
+    return mode_amplitude_map
+
+
+def extract_mode_amplitude_map(args, data, x_range, y_range):
+    matrix_k = torch.load(args.path_matrix_k)
+    matrix_k = matrix_k.cpu().detach()
+    model = koopman_model_from_ckpt(
+        args.ckpt_path, args.path_matrix_k, args.mode, args.latent_dim
+    )
+    _, eigenvectors = torch.linalg.eig(matrix_k)
+    mode_amplitude_map = compute_mode_amplitude_koopman(
+        data, model, eigenvectors, x_range, y_range
+    )
+
     return mode_amplitude_map

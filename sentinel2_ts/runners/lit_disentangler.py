@@ -102,7 +102,7 @@ class LitDisentangler(L.LightningModule):
             ).transpose(1, 2)
 
         loss_dict = {}
-        loss_dict = self.__compute_sparsity_loss(phase, predicted_abundances, loss_dict)
+        # loss_dict = self.__compute_sparsity_loss(phase, predicted_abundances, loss_dict)
         loss_dict = self.__compute_recon_loss(
             phase, predicted_states, observed_states, loss_dict
         )

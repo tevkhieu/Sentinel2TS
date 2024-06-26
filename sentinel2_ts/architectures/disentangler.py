@@ -35,10 +35,37 @@ class Disentangler(nn.Module):
         predicted_states = torch.sum(predicted_abundances * predicted_specters, dim=1)
         return predicted_states
 
+    def get_abundance(self, x):
+        return self.abundance_disentangler(x) / sum(self.abundance_disentangler(x))
+
+    def forward_with_endmembers(self, x, endmembers):
+        predicted_abundances = self.abundance_disentangler(x)
+        predicted_abundances = predicted_abundances.view(
+            predicted_abundances.size() + (1, 1)
+        )
+
+        predicted_specters = self.spectral_disentangler(x)
+        predicted_specters = predicted_specters.view(
+            predicted_specters.size(0), self.num_classes, self.size, -1
+        )
+        modified_specters = predicted_specters.clone()
+        modified_specters[:, :, :10, :] = modified_specters[
+            :, :, :10, :
+        ] * endmembers.view(1, endmembers.size(0), -1, 1)
+        predicted_states = torch.sum(
+            predicted_abundances * modified_specters, dim=1
+        ).transpose(1, 2)
+
+        return predicted_states
+
 
 if __name__ == "__main__":
     model = Disentangler(20, 64, 8, abundance_mode="lstm").to("cuda")
     x = torch.randn(256, 20, 342).to("cuda")
+    endmembers = torch.randn(8, 10).to("cuda")
+
+    print(model.forward_with_endmembers(x, endmembers).shape)
+
     predicted_specters = model.spectral_disentangler(x)
     predicted_specters = predicted_specters.view(predicted_specters.size(0), 8, 20, -1)
     print(predicted_specters.shape)

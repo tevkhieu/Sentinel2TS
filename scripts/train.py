@@ -44,16 +44,16 @@ def create_arg_parser():
     )
     parser.add_argument("--device", type=str, default="cuda", help="Device used")
     parser.add_argument(
-        "--minimum_x", type=int, default=60, help="Minimal x value on the image"
+        "--minimum_x", type=int, default=0, help="Minimal x value on the image"
     )
     parser.add_argument(
-        "--maximum_x", type=int, default=200, help="Maximal x value on the image"
+        "--maximum_x", type=int, default=199, help="Maximal x value on the image"
     )
     parser.add_argument(
-        "--minimum_y", type=int, default=100, help="Minimal y value on the image"
+        "--minimum_y", type=int, default=0, help="Minimal y value on the image"
     )
     parser.add_argument(
-        "--maximum_y", type=int, default=250, help="Maximal y value on the image"
+        "--maximum_y", type=int, default=199, help="Maximal y value on the image"
     )
     parser.add_argument("--size", type=int, default=20, help="Size of the model")
     parser.add_argument(
@@ -96,10 +96,10 @@ def main():
         time_span=args.time_span,
         shuffle=False,
         num_workers=2,
-        minimal_x=250,
-        maximal_x=300,
-        minimal_y=250,
-        maximal_y=400,
+        minimal_x=0,
+        maximal_x=100,
+        minimal_y=0,
+        maximal_y=100,
     )
 
     trainer = L.Trainer(

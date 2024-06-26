@@ -9,7 +9,7 @@ from sentinel2_ts.utils.mode_amplitude_map import (
     compute_mode_amplitude_koopman,
     compute_mode_amplitude_map_linear,
 )
-from sentinel2_ts.utils.load_model import koopman_model_from_ckpt
+from sentinel2_ts.utils.load_model import koopman_model_from_ckpt, load_data
 
 
 def create_argparser():
@@ -49,15 +49,14 @@ def create_argparser():
         default=[512, 256, 8],
         help="Latent dimension of the Koopman Autoencoder",
     )
-
+    parser.add_argument("--scale_data", type=bool, help="Scale data")
     return parser
 
 
 def main():
     args = create_argparser().parse_args()
 
-    data = np.load(args.data_path)
-    data = scale_data(data, clipping=args.clipping)
+    data = load_data(args)
     x_range, y_range = data.shape[2], data.shape[3]
 
     match args.mode:

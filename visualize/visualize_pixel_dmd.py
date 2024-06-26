@@ -5,6 +5,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 import matplotlib.pyplot as plt
 
+from sentinel2_ts.runners import DynamicalModeDecomposition
 from sentinel2_ts.dataset.process_data import scale_data
 from sentinel2_ts.utils.visualize import plot_all_spectral_signatures
 
@@ -26,40 +27,12 @@ def create_argparser():
     return parser
 
 
-def compute_dmd(data: ArrayLike) -> tuple[ArrayLike, ArrayLike]:
-    """
-    Compute the DMD of the data at point x, y
-
-    Args:
-        data (ArrayLike): Time series data
-
-    Returns:
-        Tuple[ArrayLike, ArrayLike]: Phi and Lambda DMD modes and eigenvalues
-    """
-    x_data = data[:-1, :].T
-    x_prime_data = data[1:, :].T
-
-    # Performing Singular Value Decomposition (SVD)
-    U, S, Vh = np.linalg.svd(x_data, full_matrices=False)
-
-    # Constructing the approximation of the A matrix
-    A_tilde = U.T @ x_prime_data @ Vh.T @ np.linalg.inv(np.diag(S))
-
-    # Calculating eigenvalues and eigenvectors
-    eigenvalues, eigenvectors = np.linalg.eig(A_tilde)
-
-    # Constructing the DMD modes Phi
-    Phi = x_prime_data @ Vh.T @ np.linalg.inv(np.diag(S)) @ eigenvectors
-
-    return Phi, eigenvalues
-
-
 def main():
     args = create_argparser().parse_args()
 
     data = scale_data(np.load(args.data_path), clipping=True)[:, :, args.x, args.y]
-
-    Phi, eigenvalues = compute_dmd(data)
+    dmd = DynamicalModeDecomposition()
+    Phi, eigenvalues = dmd.compute_pixel_dmd(data)
 
     initial_amplitudes = np.linalg.pinv(Phi) @ data[1]
 

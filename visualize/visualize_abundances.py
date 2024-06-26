@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 from tqdm import tqdm
 from sentinel2_ts.utils.load_model import koopman_model_from_ckpt
-from sentinel2_ts.dataset.process_data import scale_data, get_state_all_data
-
+from sentinel2_ts.dataset.process_data import get_state_all_data
+from sentinel2_ts.utils.load_model import load_data
 
 def create_argparser():
     parser = argparse.ArgumentParser()
@@ -29,15 +29,14 @@ def create_argparser():
         default=[512, 256, 32],
         help="Latent dimension",
     )
+    parser.add_argument("--scale_data", type=bool, help="Scale the data")
     return parser
 
 
 @torch.no_grad()
 def main():
     args = create_argparser().parse_args()
-
-    data = np.load(args.data_path)
-    data = scale_data(data, clipping=args.clipping)
+    data = load_data(args)
     time_range, x_range, y_range = data.shape[0], data.shape[2], data.shape[3]
     abundance_map = np.zeros(
         (time_range - 1, x_range, y_range, args.latent_dim[-1]), dtype=np.float16

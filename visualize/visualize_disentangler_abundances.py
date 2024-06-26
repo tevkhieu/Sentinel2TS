@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 from tqdm import tqdm
 from sentinel2_ts.dataset.process_data import scale_data, get_state_all_data
+from sentinel2_ts.utils.load_model import load_data
 from sentinel2_ts.architectures import Disentangler
 
 
@@ -20,17 +21,15 @@ def create_argparser():
     parser.add_argument(
         "--abundance_mode", type=str, default="conv", help="Abundance mode"
     )
-    parser.add_argument("--scale_data", type=bool, default=True, help="Scale data")
+    parser.add_argument("--scale_data", type=bool, help="Scale data")
     return parser
 
 
 @torch.no_grad()
 def main():
     args = create_argparser().parse_args()
+    data = load_data(args)
 
-    data = np.load(args.data_path)
-    if args.scale_data:
-        data = scale_data(data, clipping=args.clipping)
     time_range, x_range, y_range = data.shape[0], data.shape[2], data.shape[3]
     abundance_map = np.zeros((x_range, y_range, args.num_classes), dtype=np.float16)
     total_map = np.zeros((x_range, y_range), dtype=np.float16)

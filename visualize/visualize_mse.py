@@ -11,14 +11,7 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from sentinel2_ts.architectures import (
-    Linear,
-    LSTM,
-    Disentangler,
-    AbundanceDisentangler,
-    SpectralDisentangler,
-)
-from sentinel2_ts.utils.load_model import koopman_model_from_ckpt
+from sentinel2_ts.utils.load_model import load_model, load_data
 from sentinel2_ts.dataset.process_data import scale_data, get_state_all_data
 
 
@@ -47,41 +40,25 @@ def create_parser():
         default=[512, 256, 32],
         help="Latent dimension",
     )
-    parser.add_argument("--scale_data", type=bool, default=True, help="Scale data")
-
+    parser.add_argument("--scale_data", type=bool, help="Scale data")
+    parser.add_argument(
+        "--endmembers", type=str, default=None, help="Path to endmembers"
+    )
     return parser
 
 
 @torch.no_grad()
 def main():
     args = create_parser().parse_args()
-    match args.mode:
-        case "lstm":
-            model = LSTM(20, 256, 20)
-            model.load_state_dict(torch.load(args.ckpt_path))
-        case "linear":
-            model = Linear(20)
-            model.load_state_dict(torch.load(args.ckpt_path))
-        case "koopman_ae":
-            model = koopman_model_from_ckpt(
-                args.ckpt_path, args.path_matrix_k, "koopman_ae", args.latent_dim
-            )
-        case "koopman_unmixer":
-            model = koopman_model_from_ckpt(
-                args.ckpt_path, args.path_matrix_k, "koopman_unmixer", args.latent_dim
-            )
-        case "disentangler":
-            model = Disentangler(size=20, latent_dim=64, num_classes=8)
-            state_dict_spectral_disentangler = torch.load(
-                "models/disentangler/best_spectral_disentangler.pt"
-            )
-            model.load_state_dict(state_dict_spectral_disentangler)
+    model = load_model(args)
     model.to(args.device)
     model.eval()
 
-    data = np.load(args.data_path)
-    if args.scale_data:
-        data = scale_data(data, clipping=args.clipping)
+    if args.endmembers is not None:
+        endmembers = np.load(args.endmembers)
+        endmembers = torch.from_numpy(endmembers).to(args.device)
+
+    data = data = load_data(args)
 
     x_range, y_range = data.shape[2], data.shape[3]
     mse_map = np.zeros((x_range, y_range))
@@ -95,13 +72,16 @@ def main():
     total_mse = 0
     for x in tqdm(range(x_range)):
         if args.mode == "disentangler":
-            prediction = model(state_map[x, :, :].to(args.device))
-            squarred_error = (
+            if args.endmembers is not None:
+                prediction = model.forward_with_endmembers(
+                    state_map[x, :, :].to(args.device), endmembers
+                )
+                prediction = prediction.transpose(1, 2)[:, :10, 242:]
+            else:
+                prediction = model(state_map[x, :, :].to(args.device))
                 prediction.transpose(1, 2).transpose(0, 1)[242:, :, :10]
-                - state_map[x, :, :10, 242:]
-                .transpose(1, 2)
-                .transpose(0, 1)
-                .to(args.device)
+            squarred_error = (
+                prediction - state_map[x, :, :10, 242:].to(args.device)
             ) ** 2
 
         else:
@@ -112,11 +92,7 @@ def main():
             ) ** 2
 
         total_mse += squarred_error.sum()
-        match args.mode:
-            case "disentangler":
-                mse = torch.mean(squarred_error, dim=(1, 2))
-            case "_":
-                mse = torch.mean(squarred_error, dim=(0, 2))
+        mse = torch.mean(squarred_error, dim=(1, 2))
         mse_map[x, :] = mse.cpu().detach().numpy()
 
     print(f"Total MSE: {1e3 * total_mse/(x_range*y_range*100*10) :.4f}")

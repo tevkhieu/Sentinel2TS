@@ -6,9 +6,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 
-from sentinel2_ts.architectures import LSTM, Linear, KoopmanAE, KoopmanUnmixer
-from sentinel2_ts.utils.load_model import koopman_model_from_ckpt
-from sentinel2_ts.dataset.process_data import get_state_from_data, scale_data
+from sentinel2_ts.utils.load_model import load_model, load_data
+from sentinel2_ts.dataset.process_data import (
+    get_state_from_data,
+    scale_data,
+    get_state_time_series,
+)
+
+from sentinel2_ts.utils.visualize import plot_single_spectral_signature
 
 
 def create_arg_parser():
@@ -20,6 +25,7 @@ def create_arg_parser():
     parser.add_argument(
         "--data_path", type=str, default=None, help="Path to the data to visualize"
     )
+    parser.add_argument("--clipping", type=bool, help="Clipping the data or not")
     parser.add_argument(
         "--time_span",
         type=int,
@@ -50,8 +56,10 @@ def create_arg_parser():
         help="Path to the matrix K (only for koopman_ae)",
     )
     parser.add_argument("--latent_dim", type=int, nargs="+", default=[512, 256, 32])
-    parser.add_argument("--scale_data", type=bool, default=True, help="Scale data")
-
+    parser.add_argument("--scale_data", type=bool, help="Scale data")
+    parser.add_argument(
+        "--endmembers", type=str, default=None, help="Path to endmembers"
+    )
     return parser
 
 
@@ -59,43 +67,46 @@ def create_arg_parser():
 def main():
     args = create_arg_parser().parse_args()
 
-    if args.mode == "lstm":
-        model = LSTM(20, 256, 20)
-    if args.mode == "linear":
-        model = Linear(20)
-    if args.mode == "koopman_ae":
-        model = koopman_model_from_ckpt(
-            args.ckpt_path, args.path_matrix_k, "koopman_ae", args.latent_dim
-        )
-    if args.mode == "koopman_unmixer":
-        model = koopman_model_from_ckpt(
-            args.ckpt_path, args.path_matrix_k, "koopman_unmixer", args.latent_dim
-        )
-
+    model = load_model(args)
     state_dict = torch.load(args.ckpt_path)
     model.load_state_dict(state_dict)
     model.to(args.device)
     model.eval()
 
-    data = np.load(args.data_path)
-    if args.scale_data:
-        data = scale_data(data, clipping=False)
+    if args.endmembers is not None:
+        endmembers = np.load(args.endmembers)
+        endmembers = torch.from_numpy(endmembers).to(args.device)
+
+    data = load_data(args)
 
     x = rd.randint(0, data.shape[2]) if args.x is None else args.x
     y = rd.randint(0, data.shape[3]) if args.y is None else args.y
     band = rd.randint(0, 9) if args.band is None else args.band
 
-    initial_state = get_state_from_data(data, x, y, 1).view(1, 1, -1).to(args.device)
-    prediction = model(initial_state, args.time_span).squeeze().cpu().detach()
-    ground_truth = data[1 : args.time_span + 1, :, x, y]
+    if not args.mode == "disentangler":
+        initial_state = get_state_from_data(data, x, y, 1).unsqueeze(0).to(args.device)
+        if args.endmembers is not None:
+            prediction = (
+                model.forward_with_endmembers(initial_state, endmembers)
+                .squeeze()
+                .cpu()
+                .detach()
+            )
+        else:
+            prediction = model(initial_state, args.time_span).squeeze().cpu().detach()
 
-    print(f"MSE: {((prediction[:-100, 10:] - ground_truth[:-100]) ** 2).mean(): .4f}")
-
-    for band in range(10):
-        print(
-            f"MSE band {band}: {((prediction[:-100, band] - ground_truth[-100, band]) ** 2).mean(): .4f}"
+    else:
+        initial_state = (
+            get_state_time_series(data[:, :, x, y], 1, 342)
+            .unsqueeze(0)
+            .transpose(1, 2)
+            .to(args.device)
+        )
+        prediction = (
+            model(initial_state).squeeze().cpu().detach().transpose(0, 1).numpy()
         )
 
+    ground_truth = data[1 : args.time_span + 1, :, x, y]
     fig, ax = plt.subplots()
     plt.subplots_adjust(bottom=0.25)  # Adjust bottom to make room for the slider
 

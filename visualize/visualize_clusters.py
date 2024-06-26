@@ -3,12 +3,11 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 from sentinel2_ts.runners.clusterizer import Clusterizer
-from sentinel2_ts.dataset.process_data import scale_data, get_all_states_at_time
+from sentinel2_ts.dataset.process_data import scale_data
 from sentinel2_ts.utils.mode_amplitude_map import (
-    compute_mode_amplitude_koopman,
+    extract_mode_amplitude_map,
     compute_mode_amplitude_map_linear,
 )
-from sentinel2_ts.utils.load_model import koopman_model_from_ckpt
 
 
 def create_argparser():
@@ -104,20 +103,6 @@ def main():
         ax.scatter(X_tsne[:, 0], X_tsne[:, 1], c=cluster_map_dmd.flatten(), s=1)
         fig.legend()
         plt.show()
-
-
-def extract_mode_amplitude_map(args, data, x_range, y_range):
-    matrix_k = torch.load(args.path_matrix_k)
-    matrix_k = matrix_k.cpu().detach()
-    model = koopman_model_from_ckpt(
-        args.ckpt_path, args.path_matrix_k, args.mode, args.latent_dim
-    )
-    _, eigenvectors = torch.linalg.eig(matrix_k)
-    mode_amplitude_map = compute_mode_amplitude_koopman(
-        data, model, eigenvectors, x_range, y_range
-    )
-
-    return mode_amplitude_map
 
 
 if __name__ == "__main__":

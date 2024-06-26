@@ -7,3 +7,4 @@ sentinel2_ts.egg-info/
 build/
 data_assimilation/
 models_lightning_ckpt/
+results/

@@ -1,5 +1,13 @@
+import numpy as np
 import torch
-from sentinel2_ts.architectures import KoopmanAE, KoopmanUnmixer
+from sentinel2_ts.architectures import (
+    Linear,
+    LSTM,
+    Disentangler,
+    KoopmanAE,
+    KoopmanUnmixer,
+)
+from sentinel2_ts.dataset.process_data import scale_data
 
 
 def koopman_model_from_ckpt(
@@ -26,3 +34,35 @@ def koopman_model_from_ckpt(
     model.K = torch.load(path_matrix_k)
 
     return model
+
+
+def load_model(args):
+    match args.mode:
+        case "lstm":
+            model = LSTM(20, 256, 20)
+            model.load_state_dict(torch.load(args.ckpt_path))
+        case "linear":
+            model = Linear(20)
+            model.load_state_dict(torch.load(args.ckpt_path))
+        case "koopman_ae":
+            model = koopman_model_from_ckpt(
+                args.ckpt_path, args.path_matrix_k, "koopman_ae", args.latent_dim
+            )
+        case "koopman_unmixer":
+            model = koopman_model_from_ckpt(
+                args.ckpt_path, args.path_matrix_k, "koopman_unmixer", args.latent_dim
+            )
+        case "disentangler":
+            model = Disentangler(size=20, latent_dim=64, num_classes=4)
+            state_dict_spectral_disentangler = torch.load(args.ckpt_path)
+            model.load_state_dict(state_dict_spectral_disentangler)
+        case _:
+            raise ValueError("Mode not recognized")
+    return model
+
+
+def load_data(args):
+    data = np.load(args.data_path)
+    if args.scale_data:
+        data = scale_data(data, clipping=args.clipping)
+    return data

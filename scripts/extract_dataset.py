@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 from tqdm import tqdm
 
-from sentinel2_ts.dataset.process_data import scale_data
+from sentinel2_ts.utils.load_model import load_data
 
 
 def create_arg_parser():
@@ -32,7 +32,7 @@ def create_arg_parser():
         "--maximum_y", type=int, default=400, help="Maximal y value on the image"
     )
     parser.add_argument("--mask", type=str, default=None, help="path to the mask file")
-
+    parser.add_argument("--scale_data", type=bool, help="Scale the data")
     return parser
 
 
@@ -41,8 +41,7 @@ def main():
     dataset_dir = os.path.join("datasets", args.dataset_name)
     os.makedirs(dataset_dir, exist_ok=True)
 
-    data = np.load(args.data_path)
-    data = scale_data(data, args.clipping)
+    data = load_data(args)
 
     indices = range(data.shape[0])
 
