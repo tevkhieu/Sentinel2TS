@@ -8,6 +8,7 @@ from sentinel2_ts.utils.load_model import koopman_model_from_ckpt
 from sentinel2_ts.dataset.process_data import get_state_all_data
 from sentinel2_ts.utils.load_model import load_data
 
+
 def create_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--path_matrix_k", help="Path to the matrix K file")

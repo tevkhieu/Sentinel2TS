@@ -10,7 +10,9 @@ from sentinel2_ts.utils.visualize import plot_single_spectral_signature
 
 def create_arg_parse():
     parser = argparse.ArgumentParser(description="Visualize CPD")
-    parser.add_argument("--results_path", type=str, default=None, help="Path to the results")
+    parser.add_argument(
+        "--results_path", type=str, default=None, help="Path to the results"
+    )
     parser.add_argument(
         "--nb_cols",
         type=int,

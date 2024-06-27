@@ -1,4 +1,5 @@
 import argparse
+import os
 from itertools import permutations
 import numpy as np
 import torch
@@ -22,6 +23,9 @@ def create_parser():
     )
     parser.add_argument(
         "--abundance_map_path", type=str, default=None, help="Path to abundance map"
+    )
+    parser.add_argument(
+        "--predicted_abundance_path", type=str, default=None, help="Path to results"
     )
     parser.add_argument("--data_path", type=str, default=None, help="Path to data file")
     parser.add_argument("--device", type=str, default="cuda:0", help="Device to use")
@@ -110,19 +114,15 @@ def main():
                     .numpy()
                 )
         case "cpd":
-            tl.set_backend("pytorch")
-            decomp = CP_NN_HALS(4, verbose=True)
-            weight, factors = decomp.fit_transform(
-                tl.tensor(data.reshape(time_range, 10, -1)).to(args.device)
-            )
-            print(sum(decomp.errors_) / len(decomp.errors_))
-            predicted_abundance_map = factors[2] / tl.max(factors[2])
-            predicted_abundance_map = (
-                predicted_abundance_map.reshape(x_range, y_range, 4)
-                .cpu()
-                .detach()
-                .numpy()
-            )
+            factor = np.load(args.predicted_abundance_path)
+
+            predicted_abundance_map = factor.reshape(x_range, y_range, -1)
+            for x in range(x_range):
+                for y in range(y_range):
+                    for i in range(4):
+                        predicted_abundance_map[x, y, i] = predicted_abundance_map[
+                            x, y, i
+                        ] / (sum(predicted_abundance_map[x, y]) + 1e-9)
 
         case "dmd":
             dmd = DynamicalModeDecomposition()
@@ -130,6 +130,17 @@ def main():
             initial_amplitudes = initial_amplitudes[eigenvalues.imag >= 0].reshape(
                 500, 500, -1
             )
+
+        case "dynamical_unmixing":
+            predicted_abundance_map = np.load(args.predicted_abundance_path).reshape(
+                x_range, y_range, -1
+            )
+            for x in range(x_range):
+                for y in range(y_range):
+                    for i in range(4):
+                        predicted_abundance_map[x, y, i] = predicted_abundance_map[
+                            x, y, i
+                        ] / (sum(predicted_abundance_map[x, y]) + 1e-9)
 
         case _:
             raise ValueError(f"{args.mode} mode not recognized")

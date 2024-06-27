@@ -1,8 +1,17 @@
 import numpy as np
 from tqdm import tqdm
 
+import matplotlib.pyplot as plt
+from sentinel2_ts.utils.visualize import plot_single_spectral_signature
+
 
 class DynamicalSpectralUnmixer:
+    """
+    Python implementation of Henrot et al. (2015).
+    Dynamical Spectral Unmixing of Multitemporal Hyperspectral Images,
+    IEEE Transactions on Image Processing, 25(7), 3219 - 3232
+    """
+
     def __init__(self, data: np.ndarray, initial_specters: np.ndarray) -> None:
         """
         Initialize the dynamical spectral unmixer
@@ -14,37 +23,47 @@ class DynamicalSpectralUnmixer:
         self.time_range, self.nb_bands, self.nb_pixels = self.data.shape
         self.nb_endmembers = initial_specters.shape[1]
 
+        # Initialize the specters
         self.specters = np.array([initial_specters] * self.time_range)
 
-        self.abundance_map = np.ones(
-            (self.time_range, self.nb_endmembers, self.nb_pixels)
+        # Initialize the abundance map
+        self.abundance_map = np.array(
+            self.time_range * [np.eye(self.nb_endmembers, self.nb_pixels)]
         )
+
+        # Initialize the psi matrix
+        self.psi = np.array([np.eye(self.nb_endmembers)] * self.time_range)
 
         self.lambda_s = 1
         self.lambda_a = 1
         self.rho = 1
+
+        # dual for specter optimization
         self.U_specters = np.zeros((self.time_range, self.nb_bands, self.nb_endmembers))
+
+        # dual for abundance optimization
         self.U_abundance = np.zeros(
             (self.time_range, self.nb_endmembers, self.nb_pixels)
         )
-        self.M = np.zeros((self.time_range, self.nb_bands, self.nb_endmembers))
-        self.psi = np.array([np.eye(self.nb_endmembers)] * self.time_range)
 
     def __specters_update(self):
         """
-        Update the specter map according to equation 12 of
-        Henrot et al. (2015).
+        Update the specters according to equation 12 of
+        Henrot et al. (2015) such that the specters remain positive
         Dynamical Spectral Unmixing of Multitemporal Hyperspectral Images,
         IEEE Transactions on Image Processing, 25(7), 3219 - 3232
         """
-        for k in range(self.time_range):
-            M = np.clip(self.specters[k] + self.U_specters[k], a_min=0, a_max=None)
-            self.specters[k] = (
-                (self.data[k] @ self.abundance_map[k].T)
-                + self.lambda_s * (self.specters[0] @ self.psi[k])
-                + self.rho * (M - self.U_specters[k])
-            )
-            self.U_specters[k] += self.specters[k] - M
+        M = np.clip(self.specters + self.U_specters, a_min=0, a_max=None)
+        self.specters = (
+            (self.data @ self.abundance_map.transpose(0, 2, 1))
+            + self.lambda_s
+            * (np.array([self.specters[0]] * self.time_range) @ self.psi)
+            + self.rho * (M - self.U_specters)
+        ) @ np.linalg.inv(
+            self.abundance_map @ self.abundance_map.transpose(0, 2, 1)
+            + (self.lambda_s + self.rho) * np.eye(self.nb_endmembers)
+        )
+        self.U_specters += self.specters - M
 
     def __psi_update(self):
         """
@@ -95,10 +114,11 @@ class DynamicalSpectralUnmixer:
             Z[k] = self.__proj_simplex(self.abundance_map[k] + self.U_abundance[k])
         self.abundance_map = np.linalg.inv(
             np.sum(np.matmul(self.specters.transpose(0, 2, 1), self.specters), axis=0)
+            + self.rho * np.eye(self.nb_endmembers)
         ) @ np.sum(
             np.matmul(self.specters.transpose(0, 2, 1), self.data), axis=0
         ) + self.rho * (
-            self.U_abundance - Z
+            Z + self.U_abundance
         )
         self.U_abundance = self.U_abundance + self.abundance_map - Z
 
@@ -118,9 +138,8 @@ class DynamicalSpectralUnmixer:
         for i in tqdm(range(max_iter)):
             for j in range(max_iter_admm):
                 self.__specters_update()
-            for j in range(max_iter):
+            for j in range(max_iter_admm):
                 self.__a_update()
-
             self.__psi_update()
 
         return self.specters, self.abundance_map, self.psi

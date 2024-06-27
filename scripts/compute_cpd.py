@@ -38,6 +38,7 @@ def create_arg_parse():
 
     return parser
 
+
 def main():
     tl.set_backend("pytorch")
 
@@ -52,6 +53,7 @@ def main():
     np.save(os.path.join(args.save_folder, "weights.npy"), weights.numpy())
     for factor, name in zip(factors, ["time", "specters", "abundance_map"]):
         np.save(os.path.join(args.save_folder, f"{name}.npy"), factor.numpy())
+
 
 if __name__ == "__main__":
     main()

@@ -7,7 +7,7 @@ def create_argparser():
     parser = argparse.ArgumentParser(description="Visualize Abundance Maps")
     parser.add_argument(
         "--abundance_map_path",
-        default="data/true_abundance_map.npy",
+        default="results/dynamical_unmixing/california_artificial/abundance_map.npy",
         type=str,
         help="Path to the abundance map",
     )
@@ -18,7 +18,9 @@ def create_argparser():
 def main():
     args = create_argparser().parse_args()
 
-    abundance_map = np.load(args.abundance_map_path)
+    abundance_map = (
+        np.load(args.abundance_map_path).reshape(343, 4, 199, 199)[0].transpose(1, 2, 0)
+    )
     fig, ax = plt.subplots(1, 4)
     plt.subplots_adjust(bottom=0.25)
     for i in range(4):

@@ -25,6 +25,9 @@ def create_argparser():
     parser.add_argument(
         "--save_folder", type=str, default=None, help="Folder to save the results"
     )
+    parser.add_argument(
+        "--max_iter", type=int, default=100, help="Maximum number of iterations"
+    )
     return parser
 
 
@@ -35,12 +38,13 @@ def main():
     initial_specters = np.load(args.initial_specters_path).T
 
     unmixer = DynamicalSpectralUnmixer(data, initial_specters)
-    specter, abundance_map, psi = unmixer.unmix()
+    specter, abundance_map, psi = unmixer.unmix(max_iter=args.max_iter)
 
     os.makedirs(args.save_folder, exist_ok=True)
     np.save(os.path.join(args.save_folder, "specter.npy"), specter)
     np.save(os.path.join(args.save_folder, "abundance_map.npy"), abundance_map)
     np.save(os.path.join(args.save_folder, "psi.npy"), psi)
+
 
 if __name__ == "__main__":
     main()
