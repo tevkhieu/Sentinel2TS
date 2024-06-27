@@ -138,20 +138,8 @@ class DynamicalSpectralUnmixer:
         for i in tqdm(range(max_iter)):
             for j in range(max_iter_admm):
                 self.__specters_update()
-            fig, ax = plt.subplots(2, 4)
-            for i in range(4):
-                plot_single_spectral_signature(ax[0, i], self.specters[25, :, i])
-                ax[1, i].imshow(self.abundance_map[1, i].reshape(199, 199))
-            plt.show()
-
             for j in range(max_iter_admm):
                 self.__a_update()
-            fig, ax = plt.subplots(2, 4)
-            for i in range(4):
-                plot_single_spectral_signature(ax[0, i], self.specters[25, :, i])
-                ax[1, i].imshow(self.abundance_map[1, i].reshape(199, 199))
-            plt.show()
-
             self.__psi_update()
 
         return self.specters, self.abundance_map, self.psi
