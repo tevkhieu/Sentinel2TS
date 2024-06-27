@@ -118,7 +118,7 @@ class DynamicalSpectralUnmixer:
         ) @ np.sum(
             np.matmul(self.specters.transpose(0, 2, 1), self.data), axis=0
         ) + self.rho * (
-            Z + self.U_abundance
+            Z - self.U_abundance
         )
         self.U_abundance = self.U_abundance + self.abundance_map - Z
 
@@ -138,16 +138,30 @@ class DynamicalSpectralUnmixer:
         for i in tqdm(range(max_iter)):
             for j in range(max_iter_admm):
                 self.__specters_update()
+            fig, ax = plt.subplots(2, 4)
+            for i in range(4):
+                plot_single_spectral_signature(ax[0, i], self.specters[25, :, i])
+                ax[1, i].imshow(self.abundance_map[1, i].reshape(199, 199))
+            plt.show()
+
             for j in range(max_iter_admm):
                 self.__a_update()
+            fig, ax = plt.subplots(2, 4)
+            for i in range(4):
+                plot_single_spectral_signature(ax[0, i], self.specters[25, :, i])
+                ax[1, i].imshow(self.abundance_map[1, i].reshape(199, 199))
+            plt.show()
+
             self.__psi_update()
 
         return self.specters, self.abundance_map, self.psi
 
 
 if __name__ == "__main__":
-    data = np.random.rand(343, 10, 199, 199)
-    initial_specters = np.random.rand(10, 4)
+    data = np.load("data/synthetic_data.npy")
+    initial_specters = np.load(
+        "data/endmembers/california/endmembers_california_sentinel2.npy"
+    ).T
     unmixer = DynamicalSpectralUnmixer(data, initial_specters)
-    s, a, p = unmixer.unmix(max_iter=1, max_iter_admm=1, tol=1e-3)
+    s, a, p = unmixer.unmix(max_iter=10, max_iter_admm=100, tol=1e-3)
     print(s.shape, a.reshape(343, 4, 199, 199).shape, p.shape)
