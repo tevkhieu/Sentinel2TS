@@ -39,10 +39,10 @@ def koopman_model_from_ckpt(
 def load_model(args):
     match args.mode:
         case "lstm":
-            model = LSTM(20, 256, 20)
+            model = LSTM(args.size, 256, 20)
             model.load_state_dict(torch.load(args.ckpt_path))
         case "linear":
-            model = Linear(20)
+            model = Linear(args.size)
             model.load_state_dict(torch.load(args.ckpt_path))
         case "koopman_ae":
             model = koopman_model_from_ckpt(
@@ -53,7 +53,7 @@ def load_model(args):
                 args.ckpt_path, args.path_matrix_k, "koopman_unmixer", args.latent_dim
             )
         case "disentangler":
-            model = Disentangler(size=20, latent_dim=64, num_classes=4)
+            model = Disentangler(size=args.size, latent_dim=64, num_classes=4)
             state_dict_spectral_disentangler = torch.load(args.ckpt_path)
             model.load_state_dict(state_dict_spectral_disentangler)
         case _:

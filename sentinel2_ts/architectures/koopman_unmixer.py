@@ -1,13 +1,12 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .sparsemax import Sparsemax
 
 
 class KoopmanUnmixer(nn.Module):
-    def __init__(self, input_dim: int, linear_dims: list, device="cpu"):
+    def __init__(self, input_dim: int, linear_dims: list, nb_classes: int = 4, device="cpu"):
         """
-        Koopman Unmixer class, comprising a non-linear encoder a Koopman matrix and a linear decoder.
+        Koopman Unmixer class, comprising a non-linear encoder a Koopman matrix and a linear final layer.
 
         Args:
             input_dim (int): Dimension of the input data.
@@ -29,8 +28,16 @@ class KoopmanUnmixer(nn.Module):
         self.K = torch.eye(self.latent_dim, requires_grad=True, device=device)
         self.state_dict()["K"] = self.K
 
-        self.decoder = nn.Linear(self.latent_dim, input_dim)
-        self.final_activation = nn.ReLU()
+        self.decoder = nn.ModuleList()
+        for i in range(len(linear_dims) - 1):
+            self.decoder.add_module(
+                f"decoder_{i+1}", nn.Linear(linear_dims[-i - 1], linear_dims[-i - 2])
+            )
+        self.decoder.add_module("decoder_final", nn.Linear(linear_dims[0], nb_classes))
+        self.abundance_activation = nn.Softplus()
+
+        self.final_layer = nn.Linear(nb_classes, input_dim)
+        
 
     def encode(self, x):
         """Encode input data x using the encoder layers."""
@@ -68,7 +75,14 @@ class KoopmanUnmixer(nn.Module):
 
     def decode(self, x):
         """Decode latent space representation x using the decoder layer."""
-        return self.decoder(self.final_activation(x))
+        for layer_idx, layer in enumerate(self.decoder):
+            x = layer(x)
+            if layer_idx < len(self.decoder) - 1:
+                x = F.relu(x)
+        x = self.abundance_activation(x)
+        x = self.final_layer(x)
+
+        return x
 
     def forward_n(self, x, n):
         """
@@ -130,3 +144,53 @@ class KoopmanUnmixer(nn.Module):
             )
             abundance_list.append(abundance)
         return torch.stack(abundance_list, dim=1).squeeze(2)
+    
+    def get_abundance(self, x):
+        """
+        Get abundance from input state.
+
+        Args:
+            x (torch.Tensor): input state
+
+        Returns:
+            abundance (torch.Tensor): Abundance at input state
+        """
+        x = self.encode(x)
+        for layer_idx, layer in enumerate(self.decoder):
+            x = layer(x)
+            if layer_idx < len(self.decoder) - 1:
+                x = F.relu(x)
+        abundance = self.abundance_activation(x)
+        return abundance / torch.sum(abundance, dim=1, keepdim=True)
+    
+    def decode_abundance(self, x):
+        """
+        Decode latent time series to abundance time series.
+
+        Args:
+            predicted_latent_time_series (torch.Tensor): Latent time series
+
+        Returns:
+            predicted_abundance_time_series (torch.Tensor): Abundance time series
+        """
+        for layer_idx, layer in enumerate(self.decoder):
+            x = layer(x)
+            if layer_idx < len(self.decoder) - 1:
+                x = F.relu(x)
+        abundance = self.abundance_activation(x)
+        return abundance
+    
+if __name__ == "__main__":
+    input_data = torch.randn(256, 1, 20)
+    model = KoopmanUnmixer(20, [512, 256, 64, 32], 4)
+    x_advanced, phi = model.forward_n_remember(input_data, 100)
+    print(phi[
+            1:, :, 0, :
+        ].transpose(0, 1).shape)
+
+    abundance = model.decode_abundance(phi)
+    print(abundance[
+            1:, :, 0, :
+        ].transpose(0, 1).shape)
+
+    

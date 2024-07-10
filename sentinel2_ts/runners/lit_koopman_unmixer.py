@@ -1,5 +1,4 @@
 import os
-from lightning.pytorch.core.optimizer import LightningOptimizer
 import torch
 from torch import Tensor
 from torch.optim import Optimizer
@@ -20,7 +19,7 @@ class LitKoopmanUnmixer(L.LightningModule):
         size: int,
         experiment_name: str,
         latent_dim: list[int] = [512, 256, 32],
-        lr: int = 1e-3,
+        lr: int = 1e-5,
         time_span: int = 100,
         use_orthogonal_loss: bool = True,
         orthogonal_loss_weight: float = 10,
@@ -53,10 +52,13 @@ class LitKoopmanUnmixer(L.LightningModule):
         predicted_latent_time_series = predicted_latent_time_series[
             1:, :, 0, :
         ].transpose(0, 1)
+        abundance_time_series = self.model.decode_abundance(predicted_latent_time_series)
+        reconstruction_time_series = self.model.final_layer(abundance_time_series)
 
         loss_dict = {}
+
         _, loss_dict = self.__compute_reconstruction_loss(
-            phase, loss_dict, predicted_latent_time_series, observed_states
+            phase, loss_dict, reconstruction_time_series, observed_states
         )
 
         _, loss_dict = self.__compute_decoding_loss(
@@ -70,7 +72,7 @@ class LitKoopmanUnmixer(L.LightningModule):
         _, loss_dict = self.__compute_orthogonality_loss(phase, loss_dict)
 
         _, loss_dict = self.__compute_sparsity_loss(
-            phase, loss_dict, predicted_latent_time_series
+            phase, loss_dict, abundance_time_series
         )
 
         total_loss, loss_dict = self.__compute_total_loss(phase, loss_dict)
@@ -86,8 +88,8 @@ class LitKoopmanUnmixer(L.LightningModule):
         self.manual_backward(loss)
         opt.step()
         with torch.no_grad():
-            self.model.decoder.weight[:10, :].copy_(
-                self.model.decoder.weight[:10, :].clamp(min=0)
+            self.model.final_layer.weight[:10, :].copy_(
+                self.model.final_layer.weight[:10, :].clamp(min=0)
             )
 
         return loss
@@ -109,7 +111,7 @@ class LitKoopmanUnmixer(L.LightningModule):
         Returns:
             torch.optim.Optimizer: Optimizer instance.
         """
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        optimizer = Adam(self.parameters(), lr=self.lr)
         optimizer.add_param_group({"params": self.model.K})
         return optimizer
 
@@ -125,11 +127,16 @@ class LitKoopmanUnmixer(L.LightningModule):
                 os.path.join(self.save_dir, f"best_k.pt"),
             )
 
+    def __compute_sparsity_loss(self, phase, loss_dict, abundance_time_series):
+        sparsity_loss = 1e-1 * F.l1_loss(abundance_time_series, torch.zeros_like(abundance_time_series))
+        loss_dict[f"{phase} sparsity loss"] = sparsity_loss
+        return sparsity_loss, loss_dict
+
     def __compute_reconstruction_loss(
-        self, phase, loss_dict, predicted_latent_time_series, observed_states
+        self, phase, loss_dict, reconstruction_time_series, observed_states
     ):
         reconstruction_loss = self.criterion(
-            self.model.decode(predicted_latent_time_series), observed_states
+            reconstruction_time_series, observed_states
         )
         loss_dict[f"{phase} reconstruction loss"] = reconstruction_loss
         return reconstruction_loss, loss_dict
@@ -163,14 +170,6 @@ class LitKoopmanUnmixer(L.LightningModule):
         )
         loss_dict[f"{phase} orthogonality loss"] = orthogonality_loss
         return orthogonality_loss, loss_dict
-
-    def __compute_sparsity_loss(self, phase, loss_dict, predicted_latent_time_series):
-        sparsity_loss = F.l1_loss(
-            F.relu(predicted_latent_time_series),
-            torch.zeros_like(predicted_latent_time_series),
-        )
-        loss_dict[f"{phase} sparsity loss"] = sparsity_loss
-        return sparsity_loss, loss_dict
 
     def __compute_total_loss(self, phase, loss_dict):
         total_loss = sum(loss_dict.values())

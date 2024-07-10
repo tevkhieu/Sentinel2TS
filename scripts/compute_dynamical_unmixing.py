@@ -35,6 +35,7 @@ def main():
     args = create_argparser().parse_args()
 
     data = load_data(args)
+    time_range, nb_bands, x_range, y_range = data.shape
     initial_specters = np.load(args.initial_specters_path).T
 
     unmixer = DynamicalSpectralUnmixer(data, initial_specters)
@@ -42,7 +43,10 @@ def main():
 
     os.makedirs(args.save_folder, exist_ok=True)
     np.save(os.path.join(args.save_folder, "specter.npy"), specter)
-    np.save(os.path.join(args.save_folder, "abundance_map.npy"), abundance_map)
+    np.save(
+        os.path.join(args.save_folder, "abundance_map.npy"),
+        abundance_map.reshape(time_range, initial_specters.shape[1], x_range, y_range),
+    )
     np.save(os.path.join(args.save_folder, "psi.npy"), psi)
 
 

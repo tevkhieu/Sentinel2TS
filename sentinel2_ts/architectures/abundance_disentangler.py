@@ -30,3 +30,4 @@ if __name__ == "__main__":
     model = AbundanceDisentangler()
     x = torch.randn(512, 20, 342)
     print(model(x).shape)
+    print(torch.all(model(x) >= 0))

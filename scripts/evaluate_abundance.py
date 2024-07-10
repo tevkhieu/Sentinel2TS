@@ -2,171 +2,87 @@ import argparse
 import os
 from itertools import permutations
 import numpy as np
-import torch
-import tensorly as tl
-from tensorly.decomposition import CP_NN_HALS
-from tqdm import tqdm
 import matplotlib.pyplot as plt
-
-from sentinel2_ts.runners import Clusterizer, DynamicalModeDecomposition
-from sentinel2_ts.utils.load_model import load_model, load_data
-from sentinel2_ts.utils.process_data import get_state_all_data
-from sentinel2_ts.utils.mode_amplitude_map import extract_mode_amplitude_map
+import yaml
 
 
 def create_parser():
     parser = argparse.ArgumentParser(description="Script for evaluating abundance")
 
-    parser.add_argument("--mode", type=str, default=None, help="Mode of operation")
-    parser.add_argument(
-        "--ckpt_path", type=str, default=None, help="Path to checkpoint file"
-    )
     parser.add_argument(
         "--abundance_map_path", type=str, default=None, help="Path to abundance map"
     )
     parser.add_argument(
         "--predicted_abundance_path", type=str, default=None, help="Path to results"
     )
-    parser.add_argument("--data_path", type=str, default=None, help="Path to data file")
-    parser.add_argument("--device", type=str, default="cuda:0", help="Device to use")
-    parser.add_argument(
-        "--clipping", type=bool, default=True, help="Clipping the data or not"
-    )
-    parser.add_argument(
-        "--path_matrix_k",
-        type=str,
-        default=None,
-        help="Path to the Koopman operator",
-    )
-    parser.add_argument(
-        "--latent_dim",
-        type=int,
-        nargs="+",
-        default=[512, 256, 32],
-        help="Latent dimension",
-    )
-    parser.add_argument("--scale_data", type=bool, help="Scale data")
+    parser.add_argument("--save_folder", type=str, default=None, help="Folder to save")
+    parser.add_argument("--good_permutation", type=int, nargs="+", help="Good permutation")
 
     return parser
 
 
-@torch.no_grad()
 def main():
     args = create_parser().parse_args()
 
-    data = load_data(args)
-    if not args.mode == "disentangler":
-        state_map_time_series = get_state_all_data(data)[242:]
-    else:
-        state_map = (
-            get_state_all_data(data).transpose(0, -1).transpose(0, -2).transpose(0, -3)
-        )
-
-    time_range, x_range, y_range = data.shape[0], data.shape[2], data.shape[3]
     abundance_map = np.load(args.abundance_map_path)
+    predicted_abundance_map = np.load(args.predicted_abundance_path)
+    if len(predicted_abundance_map.shape) > 3:
+        predicted_abundance_map = predicted_abundance_map[0].transpose(1, 2, 0)
 
-    match args.mode:
-        case "koopman_ae":
-            model = load_model(args)
-            model.to(args.device)
-            model.eval()
-
-            mode_amplitude_map = extract_mode_amplitude_map(
-                args, data, x_range, y_range
-            )
-            clusterizer = Clusterizer()
-            predicted_abundance_map = clusterizer.proba_gmm(
-                mode_amplitude_map, 4, "full"
-            )
-            classif_abundance_map = np.zeros_like(predicted_abundance_map)
-            classif_abundance_map[abundance_map > 0.6] = 1
-            rmse, good_permutation = compute_abundance_rmse(
-                classif_abundance_map, predicted_abundance_map
-            )
-            print(rmse)
-            print(good_permutation)
-            fig, ax = plt.subplots(2, 4)
-            ax[0, 0].imshow(predicted_abundance_map[:, :, good_permutation[0]])
-            ax[1, 0].imshow(classif_abundance_map[:, :, 0])
-            ax[0, 1].imshow(predicted_abundance_map[:, :, good_permutation[1]])
-            ax[1, 1].imshow(classif_abundance_map[:, :, 1])
-            ax[0, 2].imshow(predicted_abundance_map[:, :, good_permutation[2]])
-            ax[1, 2].imshow(classif_abundance_map[:, :, 2])
-            ax[0, 3].imshow(predicted_abundance_map[:, :, good_permutation[3]])
-            ax[1, 3].imshow(classif_abundance_map[:, :, 3])
-            plt.show()
-
-        case "disentangler":
-            model = load_model(args)
-            model.to(args.device)
-            model.eval()
-
-            predicted_abundance_map = np.zeros((x_range, y_range, 4))
-            for i in tqdm(range(x_range)):
-                predicted_abundance_map[i, :, :] = (
-                    model.get_abundance(
-                        torch.tensor(state_map[i, :, :], dtype=torch.float32).to(
-                            args.device
-                        )
-                    )
-                    .cpu()
-                    .detach()
-                    .numpy()
-                )
-        case "cpd":
-            factor = np.load(args.predicted_abundance_path)
-
-            predicted_abundance_map = factor.reshape(x_range, y_range, -1)
-            for x in range(x_range):
-                for y in range(y_range):
-                    for i in range(4):
-                        predicted_abundance_map[x, y, i] = predicted_abundance_map[
-                            x, y, i
-                        ] / (sum(predicted_abundance_map[x, y]) + 1e-9)
-
-        case "dmd":
-            dmd = DynamicalModeDecomposition()
-            eigenvalues, eigenvectors, initial_amplitudes = dmd.compute_dmd(data)
-            initial_amplitudes = initial_amplitudes[eigenvalues.imag >= 0].reshape(
-                500, 500, -1
-            )
-
-        case "dynamical_unmixing":
-            predicted_abundance_map = np.load(args.predicted_abundance_path).reshape(
-                x_range, y_range, -1
-            )
-            for x in range(x_range):
-                for y in range(y_range):
-                    for i in range(4):
-                        predicted_abundance_map[x, y, i] = predicted_abundance_map[
-                            x, y, i
-                        ] / (sum(predicted_abundance_map[x, y]) + 1e-9)
-
-        case _:
-            raise ValueError(f"{args.mode} mode not recognized")
-
-    rmse, good_permutation = compute_abundance_rmse(
-        abundance_map, predicted_abundance_map
+    accuracy, good_permutation, accuracy_list = compute_accuracy(
+        abundance_map, predicted_abundance_map, args.good_permutation
     )
-    print(f"RMSE: {rmse}")
+    print(f"Accuracy: {accuracy}, Good Permutation: {good_permutation}")
 
+    rmse, good_permutation, rmse_list = compute_abundance_rmse(
+        abundance_map, predicted_abundance_map, args.good_permutation
+    )
+
+    print(f"RMSE: {rmse}, Good Permutation: {good_permutation}")
+
+    # Save the results
+    os.makedirs(args.save_folder, exist_ok=True)
+    with open(os.path.join(args.save_folder, "abundance.yaml"), "w") as f:
+        yaml.dump(
+            {
+                "RMSE": float(rmse),
+                "Accuracy": float(accuracy),
+                "Good Permutation": list(good_permutation),
+                "RMSE List": [float(r) for r in rmse_list],
+                "Accuracy List": [float(a) for a in accuracy_list],
+            },
+            f,
+        )
     plt.imshow(
         np.sqrt(
             np.mean(
-                (abundance_map - predicted_abundance_map[:, :, good_permutation]) ** 2,
+                (abundance_map - predicted_abundance_map[:, :, good_permutation]/(np.sum(predicted_abundance_map, axis=2, keepdims=True) + 1e-6)) ** 2,
                 axis=2,
             )
         )
     )
+    plt.title("Abundance RMSE")
+    plt.axis("off")
     plt.colorbar()
-    plt.show()
+    plt.savefig(os.path.join(args.save_folder, "abundance_rmse.png"))
+
+    fig, ax = plt.subplots(2, 4, figsize=(20, 10))
+    for i in range(4):
+        ax[0, i].imshow(abundance_map[:, :, i], vmin=0, vmax=1)
+        ax[1, i].imshow(
+            predicted_abundance_map[:, :, good_permutation[i]]/(np.sum(predicted_abundance_map, axis=2) + 1e-6), vmin=0, vmax=1
+        )
+        ax[1, i].set_title(f"Accuracy: {accuracy_list[i]:.2f}, RMSE: {rmse_list[i]:.2f}")
+        ax[0, i].axis("off")
+        ax[1, i].axis("off")
+    plt.savefig(os.path.join(args.save_folder, "abundance.png"))
 
 
 def compute_abundance_rmse(
-    abundance_map: np.ndarray, predicted_abundance_map: np.ndarray
+    abundance_map: np.ndarray, predicted_abundance_map: np.ndarray, good_permutation=None
 ):
     """
-    Compute the MSE for all permutation of the abundance maps
+    Compute the RMSE for all permutation of the abundance maps
 
     Args:
         abundance_map (np.ndarray): _description_
@@ -175,18 +91,72 @@ def compute_abundance_rmse(
     Returns:
         mse (float): _description_
     """
-    rmse = 1e9
-    permutation_endmember = list(permutations(range(4)))
-    good_permutation = None
-    for permutation in permutation_endmember:
-        rmse_permutation = np.sqrt(
-            np.mean((abundance_map - predicted_abundance_map[:, :, permutation]) ** 2)
-        )
-        if rmse_permutation < rmse:
-            rmse = rmse_permutation
-            good_permutation = permutation
 
-    return rmse, good_permutation
+    if good_permutation is None:
+        predicted_abundance_map = predicted_abundance_map/(np.sum(predicted_abundance_map, axis=2, keepdims=True) + 1e-6)
+        rmse = 1e9
+        rmse_list = [1e9] * 4
+        permutation_endmember = list(permutations(range(4)))
+        good_permutation = [0, 1, 2, 3]
+        for permutation in permutation_endmember:
+            rmse_permutation = np.sqrt(
+                np.mean((abundance_map - predicted_abundance_map[:, :, permutation]) ** 2)
+            )
+            if rmse_permutation < rmse:
+                rmse = rmse_permutation
+                good_permutation = permutation
+                rmse_list = np.sqrt(
+                np.mean((abundance_map - predicted_abundance_map[:, :, permutation]) ** 2, axis=(0,1))
+            )
+    else:
+        rmse = np.sqrt(
+            np.mean((abundance_map - predicted_abundance_map[:, :, good_permutation]) ** 2)
+        )
+        rmse_list = np.sqrt(
+            np.mean((abundance_map - predicted_abundance_map[:, :, good_permutation]) ** 2, axis=(0,1))
+        )
+
+
+    return rmse, good_permutation, rmse_list
+
+
+def compute_accuracy(abundance_map, predicted_abundance_map, good_permutation=None):
+    if good_permutation is None:
+        permutation_endmember = list(permutations(range(abundance_map.shape[-1])))
+        good_permutation = None
+
+        binary_abundance_map = abundance_map > 0.5
+        binary_predicted_abundance_map = predicted_abundance_map > 0.5
+
+        accuracy = 0
+        accuracy_list = np.zeros(len(permutation_endmember))
+        x_range, y_range, nb_endmember = abundance_map.shape
+
+        # Flatten the abundance maps for easier comparison
+        binary_abundance_map_flat = binary_abundance_map.reshape(-1, nb_endmember)
+        binary_predicted_abundance_map_flat = binary_predicted_abundance_map.reshape(
+            -1, nb_endmember
+        )
+
+        for permutation in permutation_endmember:
+            permuted_predicted = binary_predicted_abundance_map_flat[:, permutation]
+            accuracy_permutation = np.mean(
+                np.all(binary_abundance_map_flat == permuted_predicted, axis=1)
+            )
+
+            if accuracy_permutation > accuracy:
+                accuracy = accuracy_permutation
+                good_permutation = permutation
+                accuracy_list = np.mean(binary_abundance_map_flat == permuted_predicted, axis=0)
+    else:
+        binary_abundance_map = abundance_map > 0.5
+        binary_predicted_abundance_map = predicted_abundance_map > 0.5
+
+        accuracy = np.mean(
+            np.all(binary_abundance_map == binary_predicted_abundance_map[:, :, good_permutation], axis=2)
+        )
+        accuracy_list = np.mean(binary_abundance_map == binary_predicted_abundance_map[:, :, good_permutation], axis = (0, 1))
+    return accuracy, good_permutation, accuracy_list
 
 
 if __name__ == "__main__":

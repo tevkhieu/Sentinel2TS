@@ -76,10 +76,11 @@ class LitDisentangler(L.LightningModule):
             tuple[Tensor, dict[str, Tensor]]: total loss and dictionary of losses
         """
 
-        z, mu, sigma = self.model.spectral_disentangler.encode(observed_states)
-        predicted_specters = self.model.spectral_disentangler.decode(
-            z.view(z.size(0), self.latent_dim, -1)
-        )
+        # z = self.model.spectral_disentangler.encode(observed_states)
+        # predicted_specters = self.model.spectral_disentangler.decode(
+        #     z.view(z.size(0), self.latent_dim, -1)
+        # )
+        predicted_specters = self.model.spectral_disentangler(observed_states)
         predicted_specters = predicted_specters.view(
             predicted_specters.size(0), self.num_classes, self.size, -1
         )
@@ -106,7 +107,7 @@ class LitDisentangler(L.LightningModule):
         loss_dict = self.__compute_recon_loss(
             phase, predicted_states, observed_states, loss_dict
         )
-        loss_dict = self.__compute_kld_loss(phase, mu, sigma, loss_dict)
+        # loss_dict = self.__compute_kld_loss(phase, mu, sigma, loss_dict)
 
         total_loss, loss_dict = self.__compute_total_loss(phase, loss_dict)
 
@@ -149,7 +150,7 @@ class LitDisentangler(L.LightningModule):
     def __compute_sparsity_loss(
         self, phase, predicted_abundances, loss_dict: dict[str, Tensor] = None
     ):
-        loss_dict[f"{phase}_sparsity_loss"] = 1e-2 * torch.mean(
+        loss_dict[f"{phase}_sparsity_loss"] = 1e-3 * torch.mean(
             torch.abs(predicted_abundances)
         )
         return loss_dict

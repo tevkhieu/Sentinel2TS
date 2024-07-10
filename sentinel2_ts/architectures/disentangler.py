@@ -36,7 +36,9 @@ class Disentangler(nn.Module):
         return predicted_states
 
     def get_abundance(self, x):
-        return self.abundance_disentangler(x) / sum(self.abundance_disentangler(x))
+        return self.abundance_disentangler(x) / (
+            torch.sum(self.abundance_disentangler(x), dim=1, keepdim=True) + 1e-6
+        )
 
     def forward_with_endmembers(self, x, endmembers):
         predicted_abundances = self.abundance_disentangler(x)

@@ -44,7 +44,7 @@ def main():
 
     args = create_arg_parse().parse_args()
     data = load_data(args)
-    time_range, nb_band, _, _ = data.shape
+    time_range, nb_band, x_range, y_range = data.shape
 
     data = data.reshape(time_range, nb_band, -1)
     cpd = CP_NN_HALS(rank=args.rank, n_iter_max=100, verbose=True)
@@ -52,6 +52,8 @@ def main():
     os.makedirs(args.save_folder, exist_ok=True)
     np.save(os.path.join(args.save_folder, "weights.npy"), weights.numpy())
     for factor, name in zip(factors, ["time", "specters", "abundance_map"]):
+        if name == "abundance_map":
+            factor = factor.reshape(x_range, y_range, -1)
         np.save(os.path.join(args.save_folder, f"{name}.npy"), factor.numpy())
 
 
