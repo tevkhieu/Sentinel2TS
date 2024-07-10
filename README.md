@@ -1,5 +1,6 @@
 # Sentinel2TS
-The goal is to perform semantic unmixing on Sentinel2 Time Series
+The goal is to perform semantic unmixing on Sentinel2 Time Series using various machine learning models.
+This repository was written during a 6 months internship at IMT Atlantique
 
 # Data
 The data used are the same as the original repository.
@@ -9,15 +10,14 @@ You can find the numpy files corresponding to the time series [here](https://dri
 # How to run
 
 ## Requirements
-Hopefully the source code should be installable as a package with all of its requirements.
-Else here is a list of the requirements
+The source code should be installable as a package with all its requirements. Alternatively, you can manually install the dependencies:
 
-    "torch==2.2.1",
-    "torchvision==0.17.1",
-    "pytorch-lightning==2.1.3",
-    "scikit-learn==1.3.0",
-    "numpy==1.24.3",
-    "matplotlib==3.8.0",
+    torch==2.2.1
+    torchvision==0.17.1
+    pytorch-lightning==2.1.3
+    scikit-learn==1.3.0
+    numpy==1.24.3
+    matplotlib==3.8.0
 
 ## Extract a dataset
 Data should be in the format `(number_time_steps, number_bands, x_range, y_range)` and saved in a file `data.npy`
@@ -41,10 +41,7 @@ scripts/train.py --train_data_path datasets/your_dataset --val_data_path dataset
 ```
 
 ## Evaluation
-Once a model is trained depending on what model was chosen, first compute the abundance map, the endmembers and the reconstruction
-
-
-Then run the corresponding evaluation to get the desired metrics
+After training a model, compute the abundance map, endmembers, and reconstruction if necessary/possible. Then, run the corresponding evaluation script to get the desired metrics.
 
 
 # Acknowledgement :
@@ -53,9 +50,9 @@ This repository was forked from Anthony Frion's [repository](https://github.com/
 
 ## Associated papers
 
-Frion, A., Drumetz, L., Tochon, G., Dalla Mura, M. & Aïssa El Bey, A. (2023). Learning Sentinel-2 reflectance dynamics for data-driven assimilation and forecasting. EUSIPCO 2023. arXiv:2305.03743.
+- Frion, A., Drumetz, L., Tochon, G., Dalla Mura, M. & Aïssa El Bey, A. (2023). Learning Sentinel-2 reflectance dynamics for data-driven assimilation and forecasting. EUSIPCO 2023. arXiv:2305.03743.
 
-Frion, A., Drumetz, L., Mura, M. D., Tochon, G., & Bey, A. A. E. (2023). Neural Koopman prior for data assimilation. arXiv preprint arXiv:2309.05317.
+- Frion, A., Drumetz, L., Mura, M. D., Tochon, G., & Bey, A. A. E. (2023). Neural Koopman prior for data assimilation. arXiv preprint arXiv:2309.05317.
 
-File `sentinel2_ts/architectures/koopman_ae.py` contains the implementation of the Koopman auto-encoder model discussed in the papers.
+The file `sentinel2_ts/architectures/koopman_ae.py` contains the implementation of the Koopman auto-encoder model discussed in the papers.
 

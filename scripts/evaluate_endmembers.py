@@ -42,7 +42,7 @@ def main():
         case _:
             raise ValueError("Mode not supported")
 
-    angle, good_permutation, angle_list = compute_endmember_cosine(
+    angle, good_permutation, angle_list = _compute_endmember_angle(
         endmembers, predicted_endmembers, args.good_permutation
     )
 
@@ -69,7 +69,7 @@ def main():
     plt.savefig(os.path.join(args.save_folder, "endmembers.png"))
 
 
-def compute_endmember_cosine(endmembers: np.ndarray, predicted_endmembers: np.ndarray, good_permutation: list[int] = None):
+def _compute_endmember_angle(endmembers: np.ndarray, predicted_endmembers: np.ndarray, good_permutation: list[int] = None):
     """
     Compute the angle for all permutation of the endmembers
 
@@ -84,37 +84,43 @@ def compute_endmember_cosine(endmembers: np.ndarray, predicted_endmembers: np.nd
     permutation_endmember = list(permutations(range(4)))
     if good_permutation is None:
         good_permutation = None
+        angle_list_permutation = None
         for permutation in permutation_endmember:
-            angle_list = np.arccos(
-                [
-                    np.dot(endmembers[i], predicted_endmembers[permutation[i]])
-                    / (
-                        np.linalg.norm(endmembers[i])
-                        * np.linalg.norm(predicted_endmembers[permutation[i]])
-                    )
-                    for i in range(4)
-                ]
-            )
-            angle_permutation = np.mean(angle_list)
-            
+            angle_permutation, angle_list_permutation = _compute_angle_list(endmembers, predicted_endmembers, permutation)            
             if angle_permutation < angle:
                 angle = angle_permutation
                 good_permutation = permutation
+                angle_list = angle_list_permutation
     else:
-        angle_list = np.arccos(
+        angle, angle_list = _compute_angle_list(endmembers, predicted_endmembers, good_permutation)
+    return angle, good_permutation, angle_list
+
+
+def _compute_angle_list(endmembers: np.ndarray, predicted_endmembers: np.ndarray, permutation: list[int] = None):
+    """
+    Compute the angle for all permutation of the endmembers
+
+    Args:
+        endmembers (np.ndarray): _description_
+        predicted_endmembers (np.ndarray): _description_
+
+    Returns:
+        cps (float): _description_
+    """        
+    angle_list = np.arccos(
             [
-                np.dot(endmembers[i], predicted_endmembers[good_permutation[i]])
+                np.dot(endmembers[i], predicted_endmembers[permutation[i]])
                 / (
                     np.linalg.norm(endmembers[i])
-                    * np.linalg.norm(predicted_endmembers[good_permutation[i]])
+                    * np.linalg.norm(predicted_endmembers[permutation[i]])
                 )
                 for i in range(4)
             ]
-        )
-        angle = np.mean(angle_list)
+        ) * 180/np.pi
+    
+    angle = np.mean(angle_list)
 
-    return angle * 180/np.pi, good_permutation, angle_list
-
+    return angle, angle_list
 
 if __name__ == "__main__":
     main()

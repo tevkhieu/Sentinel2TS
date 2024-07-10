@@ -11,6 +11,7 @@ from sentinel2_ts.dataset.process_data import scale_data
 
 
 def koopman_model_from_ckpt(
+    size: int,
     ckpt_path: str,
     path_matrix_k: str,
     mode: str = "koopman_ae",
@@ -27,9 +28,9 @@ def koopman_model_from_ckpt(
         _type_: _description_
     """
     if mode == "koopman_ae":
-        model = KoopmanAE(20, latent_dim)
+        model = KoopmanAE(size, latent_dim)
     else:
-        model = KoopmanUnmixer(20, latent_dim)
+        model = KoopmanUnmixer(size, latent_dim)
     model.load_state_dict(torch.load(ckpt_path))
     model.K = torch.load(path_matrix_k)
 
@@ -46,11 +47,11 @@ def load_model(args):
             model.load_state_dict(torch.load(args.ckpt_path))
         case "koopman_ae":
             model = koopman_model_from_ckpt(
-                args.ckpt_path, args.path_matrix_k, "koopman_ae", args.latent_dim
+                args.size, args.ckpt_path, args.path_matrix_k, "koopman_ae", args.latent_dim
             )
         case "koopman_unmixer":
             model = koopman_model_from_ckpt(
-                args.ckpt_path, args.path_matrix_k, "koopman_unmixer", args.latent_dim
+                args.size, args.ckpt_path, args.path_matrix_k, "koopman_unmixer", args.latent_dim
             )
         case "disentangler":
             model = Disentangler(size=args.size, latent_dim=64, num_classes=4)

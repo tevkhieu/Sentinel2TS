@@ -59,14 +59,31 @@ def main():
             model = load_model(args)
             model.to(args.device)
             model.eval()
+            
+            matrix_k = torch.load(args.path_matrix_k)
+            matrix_k = matrix_k.cpu().detach()
+            _, eigenvectors = torch.linalg.eig(matrix_k)
 
-            # mode_amplitude_map = extract_mode_amplitude_map(
-            #     args, data, x_range, y_range
-            # )
-            # clusterizer = Clusterizer()
-            # predicted_abundance_map = clusterizer.proba_gmm(
-            #     mode_amplitude_map, 4, "full"
-            # ).reshape(x_range, y_range, 4)
+            mode_amplitude_map = np.zeros((x_range, y_range, eigenvectors.shape[0]))
+            inverse_eigenvectors = torch.pinverse(eigenvectors)
+            for i in tqdm(range(x_range)):
+                for j in range(y_range):
+                    input_data = (
+                        get_state(np.load(os.path.join(args.dataset_path, f"{i:03}_{j:03}.npy")), 1)
+                    )
+                    mode_amplitude_map[i, j, :] = (
+                        torch.real(
+                            inverse_eigenvectors.to(torch.complex64)
+                            @ model.encode(input_data).to(torch.complex64)
+                        )
+                        .detach()
+                        .numpy()
+            )
+
+            clusterizer = Clusterizer()
+            predicted_abundance_map = clusterizer.proba_gmm(
+                mode_amplitude_map, 4, "full"
+            ).reshape(x_range, y_range, 4)
 
         case "disentangler":
             model = load_model(args)
