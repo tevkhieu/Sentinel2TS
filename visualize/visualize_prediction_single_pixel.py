@@ -7,11 +7,15 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 
 
-
 def create_arg_parser():
     parser = argparse.ArgumentParser(description="Visualize inference of a network")
     parser.add_argument("--data_path", type=str, default=None, help="Path to the data")
-    parser.add_argument("--reconstruction_path", type=str, default=None, help="Path to the reconstruction")
+    parser.add_argument(
+        "--reconstruction_path",
+        type=str,
+        default=None,
+        help="Path to the reconstruction",
+    )
     parser.add_argument(
         "--x", type=int, default=None, help="x value where to compute prediction"
     )
@@ -64,9 +68,7 @@ def main():
 
     slider.on_changed(update)
     ax.legend()
-    plt.title(
-        f"pixel {x}, {y} from {os.path.split(args.data_path)[-1].split('.')[0]}"
-    )
+    plt.title(f"pixel {x}, {y} from {os.path.split(args.data_path)[-1].split('.')[0]}")
     plt.show()
 
 

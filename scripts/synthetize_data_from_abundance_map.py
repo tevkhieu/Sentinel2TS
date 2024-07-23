@@ -13,14 +13,15 @@ im = np.delete(im, slice(142, 150), axis=2)
 
 im = (im - np.amin(im)) / (np.amax(im) - np.amin(im))  # normalize data
 
-# im = im[:, :, [9, 16, 24, 30, 34, 38, 43, 46, 121, 180]]  # sample sentinel2 bands
-# im = im[:, :, [0, 1, 2, 4, 5, 6, 3, 7, 8, 9]]
+im = im[:, :, [9, 16, 24, 30, 34, 38, 43, 46, 121, 180]]  # sample sentinel2 bands
+im = im[:, :, [0, 1, 2, 4, 5, 6, 3, 7, 8, 9]]
 
 abundance_map = np.load("data/true_abundance_map.npy")
 
 data = np.zeros((343, 192, im.shape[0], im.shape[1]))
 
 abundance_mask = abundance_map > 0.3
+
 
 for x in range(im.shape[0]):
     for y in range(im.shape[1]):
@@ -55,4 +56,4 @@ for x in range(im.shape[0]):
                 * abundance_map[x, y, 3]
             )
 
-np.save("data/hyperspectral_synthetic_data.npy", data)
+np.save("data/synthetic_data_bis.npy", data)

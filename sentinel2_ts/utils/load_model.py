@@ -47,14 +47,24 @@ def load_model(args):
             model.load_state_dict(torch.load(args.ckpt_path))
         case "koopman_ae":
             model = koopman_model_from_ckpt(
-                args.size, args.ckpt_path, args.path_matrix_k, "koopman_ae", args.latent_dim
+                args.size,
+                args.ckpt_path,
+                args.path_matrix_k,
+                "koopman_ae",
+                args.latent_dim,
             )
         case "koopman_unmixer":
             model = koopman_model_from_ckpt(
-                args.size, args.ckpt_path, args.path_matrix_k, "koopman_unmixer", args.latent_dim
+                args.size,
+                args.ckpt_path,
+                args.path_matrix_k,
+                "koopman_unmixer",
+                args.latent_dim,
             )
         case "disentangler":
-            model = Disentangler(size=args.size, latent_dim=64, num_classes=4)
+            model = Disentangler(
+                size=args.size, latent_dim=64, num_classes=args.num_classes
+            )
             state_dict_spectral_disentangler = torch.load(args.ckpt_path)
             model.load_state_dict(state_dict_spectral_disentangler)
         case _:

@@ -66,6 +66,5 @@ def main():
     plt.savefig(os.path.join(args.save_folder, "reconstruction_2.png"))
 
 
-
 if __name__ == "__main__":
     main()

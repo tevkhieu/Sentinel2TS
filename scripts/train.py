@@ -70,6 +70,10 @@ def create_arg_parser():
     parser.add_argument(
         "--path_endmembers", type=str, default=None, help="Path to endmembers"
     )
+    parser.add_argument(
+        "--path_images", type=str, default=None, help="Path to images dataset"
+    )
+    parser.add_argument("--num_classes", type=int, default=4, help="Number of classes")
     return parser
 
 
@@ -79,6 +83,7 @@ def main():
 
     train_dataloader = get_dataloader(
         args.train_data_path,
+        path_images=args.path_images,
         data_mode=args.data_mode,
         batch_size=args.batch_size,
         time_span=args.time_span,
@@ -90,6 +95,7 @@ def main():
     )
     val_dataloader = get_dataloader(
         args.val_data_path,
+        path_images=args.path_images,
         data_mode=args.data_mode,
         dataset_len=512 * 51,
         batch_size=args.batch_size,
@@ -136,7 +142,7 @@ def main():
             model = LitDisentangler(
                 size=args.size,
                 latent_dim=64,
-                num_classes=4,
+                num_classes=args.num_classes,
                 experiment_name=args.experiment_name,
                 abundance_mode=args.abundance_mode,
             )
@@ -144,11 +150,22 @@ def main():
             model = LitDisentangler(
                 size=args.size,
                 latent_dim=64,
-                num_classes=5,
+                num_classes=args.num_classes,
                 endmembers=np.load(args.path_endmembers),
                 experiment_name=args.experiment_name,
                 abundance_mode=args.abundance_mode,
             )
+        # case "lucas_unmixer":
+        #     model = LitLucasUnmixer(
+        #         num_classes=args.num_classes,
+        #         experiment_name=args.experiment_name,
+        #         size=args.size,
+        #         latent_dim=args.latent_dim,
+        #         x_range=args.maximum_x - args.minimum_x,
+        #         y_range=args.maximum_y - args.minimum_y,
+        #         image_dataset_path=args.path_images,
+        #         time_series_dataset_path=args.train_data_path,
+        #     )
 
     trainer.fit(
         model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader

@@ -3,14 +3,16 @@ import argparse
 import numpy as np
 
 import torch
-from sentinel2_ts.dataset.process_data import scale_data, get_state_time_series
+from sentinel2_ts.dataset.process_data import get_state_time_series
 from sentinel2_ts.architectures import Disentangler, KoopmanUnmixer
 
 
 def create_argparser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ckpt_path", help="Path to the abundance disentangler model")
-    parser.add_argument("--dataset_path", type=str, default=None, help="Path to the data")
+    parser.add_argument(
+        "--dataset_path", type=str, default=None, help="Path to the data"
+    )
     parser.add_argument(
         "--clipping", type=bool, default=True, help="Clipping the data or not"
     )
@@ -31,7 +33,13 @@ def create_argparser():
     )
     parser.add_argument("--size", type=int, default=20, help="Size of the data")
     parser.add_argument("--mode", type=str, default=None, help="Mode of operation")
-    parser.add_argument("--latent_dim", type=int, nargs="+", default=[512, 256, 32], help="Latent dimension")
+    parser.add_argument(
+        "--latent_dim",
+        type=int,
+        nargs="+",
+        default=[512, 256, 32],
+        help="Latent dimension",
+    )
     return parser
 
 
@@ -52,18 +60,20 @@ def main():
         model.load_state_dict(torch.load(args.ckpt_path))
         model.eval()
         state = get_state_time_series(pixel_data, 1, 342).T.unsqueeze(0).to(args.device)
-        endmembers = (
-            model.spectral_disentangler(state).cpu().detach().squeeze().numpy()
-        )
-        endmembers = endmembers.reshape(
-            args.num_classes, args.size, -1
-        )
-    
+        endmembers = model.spectral_disentangler(state).cpu().detach().squeeze().numpy()
+        endmembers = endmembers.reshape(args.num_classes, args.size, -1)
+
     elif args.mode == "unmixer":
         model = KoopmanUnmixer(args.size, args.latent_dim)
         model.load_state_dict(torch.load(args.ckpt_path))
 
-        endmembers = model.final_layer.weight[:10, :].cpu().detach().numpy().transpose(1, 0)
+        endmembers = (
+            model.final_layer.weight[: args.size // 2, :]
+            .cpu()
+            .detach()
+            .numpy()
+            .transpose(1, 0)
+        )
 
     os.makedirs(args.save_folder, exist_ok=True)
     np.save(os.path.join(args.save_folder, "endmembers.npy"), endmembers)

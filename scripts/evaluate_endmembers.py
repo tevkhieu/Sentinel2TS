@@ -18,7 +18,9 @@ def create_parser():
     )
     parser.add_argument("--save_folder", type=str, default=None, help="Folder to save")
     parser.add_argument("--mode", type=str, default=None, help="Mode of operation")
-    parser.add_argument("--good_permutation", type=int, nargs="+", default=None, help="Good permutation")
+    parser.add_argument(
+        "--good_permutation", type=int, nargs="+", default=None, help="Good permutation"
+    )
     return parser
 
 
@@ -26,7 +28,7 @@ def create_parser():
 def main():
     args = create_parser().parse_args()
 
-    endmembers = np.load(args.endmembers_path)
+    endmembers = np.load(args.endmembers_path)[1:]
     predicted_endmembers = np.load(args.predicted_endmembers_path)
     match args.mode:
         case "disentangler":
@@ -61,7 +63,7 @@ def main():
         )
 
     fig, ax = plt.subplots(1, 4, figsize=(30, 10))
-    for i in range(4):
+    for i in range(endmembers.shape[0]):
         ax[i].plot(endmembers[i], label="Ground Truth")
         ax[i].plot(predicted_endmembers[good_permutation[i]], label="Predicted")
         ax[i].set_title(f"Angle: {angle_list[i]:.2f}")
@@ -69,7 +71,11 @@ def main():
     plt.savefig(os.path.join(args.save_folder, "endmembers.png"))
 
 
-def _compute_endmember_angle(endmembers: np.ndarray, predicted_endmembers: np.ndarray, good_permutation: list[int] = None):
+def _compute_endmember_angle(
+    endmembers: np.ndarray,
+    predicted_endmembers: np.ndarray,
+    good_permutation: list[int] = None,
+):
     """
     Compute the angle for all permutation of the endmembers
 
@@ -81,22 +87,30 @@ def _compute_endmember_angle(endmembers: np.ndarray, predicted_endmembers: np.nd
         cps (float): _description_
     """
     angle = 1e9
-    permutation_endmember = list(permutations(range(4)))
     if good_permutation is None:
+        permutation_endmember = list(permutations(range(4)))
         good_permutation = None
         angle_list_permutation = None
         for permutation in permutation_endmember:
-            angle_permutation, angle_list_permutation = _compute_angle_list(endmembers, predicted_endmembers, permutation)            
+            angle_permutation, angle_list_permutation = _compute_angle_list(
+                endmembers, predicted_endmembers, permutation
+            )
             if angle_permutation < angle:
                 angle = angle_permutation
                 good_permutation = permutation
                 angle_list = angle_list_permutation
     else:
-        angle, angle_list = _compute_angle_list(endmembers, predicted_endmembers, good_permutation)
+        angle, angle_list = _compute_angle_list(
+            endmembers, predicted_endmembers, good_permutation
+        )
     return angle, good_permutation, angle_list
 
 
-def _compute_angle_list(endmembers: np.ndarray, predicted_endmembers: np.ndarray, permutation: list[int] = None):
+def _compute_angle_list(
+    endmembers: np.ndarray,
+    predicted_endmembers: np.ndarray,
+    permutation: list[int] = None,
+):
     """
     Compute the angle for all permutation of the endmembers
 
@@ -106,21 +120,26 @@ def _compute_angle_list(endmembers: np.ndarray, predicted_endmembers: np.ndarray
 
     Returns:
         cps (float): _description_
-    """        
-    angle_list = np.arccos(
+    """
+    angle_list = (
+        np.arccos(
             [
                 np.dot(endmembers[i], predicted_endmembers[permutation[i]])
                 / (
                     np.linalg.norm(endmembers[i])
                     * np.linalg.norm(predicted_endmembers[permutation[i]])
                 )
-                for i in range(4)
+                for i in range(endmembers.shape[0])
             ]
-        ) * 180/np.pi
-    
+        )
+        * 180
+        / np.pi
+    )
+
     angle = np.mean(angle_list)
 
     return angle, angle_list
+
 
 if __name__ == "__main__":
     main()

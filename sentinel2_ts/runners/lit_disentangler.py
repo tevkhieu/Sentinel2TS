@@ -11,7 +11,7 @@ import lightning as L
 
 class LitDisentangler(L.LightningModule):
     """
-    Lightning module for training a spectral disentangler
+    Lightning module for training a disentangler
     """
 
     def __init__(
@@ -47,10 +47,12 @@ class LitDisentangler(L.LightningModule):
                 .float()
                 .view(1, endmembers.shape[0], -1, 1)
                 .to("cuda")
-            )
+            )[:, 1:, :, :]
         else:
             self.endmembers = None
-        self.num_classes = num_classes if endmembers is None else endmembers.shape[0]
+        self.num_classes = (
+            num_classes if endmembers is None else self.endmembers.shape[1]
+        )
         self.beta = beta
         self.model = Disentangler(size, latent_dim, self.num_classes, abundance_mode)
         self.experiment_name = experiment_name
@@ -76,10 +78,6 @@ class LitDisentangler(L.LightningModule):
             tuple[Tensor, dict[str, Tensor]]: total loss and dictionary of losses
         """
 
-        # z = self.model.spectral_disentangler.encode(observed_states)
-        # predicted_specters = self.model.spectral_disentangler.decode(
-        #     z.view(z.size(0), self.latent_dim, -1)
-        # )
         predicted_specters = self.model.spectral_disentangler(observed_states)
         predicted_specters = predicted_specters.view(
             predicted_specters.size(0), self.num_classes, self.size, -1
@@ -88,26 +86,32 @@ class LitDisentangler(L.LightningModule):
         predicted_abundances = predicted_abundances.view(
             predicted_abundances.size() + (1, 1)
         )
+
+        loss_dict = {}
+
         if self.endmembers is not None:
-            modified_specters = predicted_specters.clone()
-            modified_specters[:, :, :10, :] = (
-                modified_specters[:, :, :10, :] * self.endmembers
-            )
+            # modified_specters = predicted_specters.clone()
+            # modified_specters[:, :, : self.size // 2, :] = (
+            #     modified_specters[:, :, : self.size // 2, :] * self.endmembers
+            # )
+            # predicted_states = torch.sum(
+            #     predicted_abundances * modified_specters, dim=1
+            # ).transpose(1, 2)
             predicted_states = torch.sum(
-                predicted_abundances * modified_specters, dim=1
+                predicted_abundances * predicted_specters, dim=1
             ).transpose(1, 2)
+
+            loss_dict = self.__compute_cosine_loss(phase, loss_dict, predicted_specters)
 
         else:
             predicted_states = torch.sum(
                 predicted_abundances * predicted_specters, dim=1
             ).transpose(1, 2)
 
-        loss_dict = {}
-        # loss_dict = self.__compute_sparsity_loss(phase, predicted_abundances, loss_dict)
+        loss_dict = self.__compute_sparsity_loss(phase, predicted_abundances, loss_dict)
         loss_dict = self.__compute_recon_loss(
             phase, predicted_states, observed_states, loss_dict
         )
-        # loss_dict = self.__compute_kld_loss(phase, mu, sigma, loss_dict)
 
         total_loss, loss_dict = self.__compute_total_loss(phase, loss_dict)
 
@@ -150,14 +154,8 @@ class LitDisentangler(L.LightningModule):
     def __compute_sparsity_loss(
         self, phase, predicted_abundances, loss_dict: dict[str, Tensor] = None
     ):
-        loss_dict[f"{phase}_sparsity_loss"] = 1e-3 * torch.mean(
+        loss_dict[f"{phase}_sparsity_loss"] = 1e-4 * torch.mean(
             torch.abs(predicted_abundances)
-        )
-        return loss_dict
-
-    def __compute_kld_loss(self, phase, mu, sigma, loss_dict: dict[str, Tensor] = None):
-        loss_dict[f"{phase}_kld_loss"] = self.beta * torch.mean(
-            -0.5 * torch.sum(1 + sigma - mu**2 - sigma.exp(), dim=1), dim=0
         )
         return loss_dict
 
@@ -168,7 +166,7 @@ class LitDisentangler(L.LightningModule):
         observed_states,
         loss_dict: dict[str, Tensor] = None,
     ):
-        loss_dict[f"{phase}_recon_loss"] = self.criterion(
+        loss_dict[f"{phase}_recon_loss"] = 10 * self.criterion(
             predicted_states, observed_states.transpose(1, 2)
         )
         return loss_dict
@@ -179,3 +177,19 @@ class LitDisentangler(L.LightningModule):
             loss_dict[f"{phase}_total_loss"] += loss_dict[key]
 
         return loss_dict[f"{phase}_total_loss"], loss_dict
+
+    def __compute_cosine_loss(self, phase, loss_dict, predicted_specters):
+        endmembers = self.endmembers.expand(
+            (predicted_specters.size(0), -1, -1, predicted_specters.size(3))
+        ).to(self.device)
+        cosine_loss = 1 - 1e-3 * torch.nn.functional.cosine_similarity(
+            endmembers, predicted_specters[:, :, : self.size // 2, :], dim=2
+        )
+
+        mse_loss = torch.nn.functional.mse_loss(
+            predicted_specters[:, :, : self.size // 2, :], endmembers
+        )
+
+        loss_dict[f"{phase}_cosine_loss"] = torch.mean(cosine_loss) + 1e-3 * mse_loss
+
+        return loss_dict

@@ -11,7 +11,6 @@ class SpectralDisentangler(nn.Module):
         self.bn1 = nn.BatchNorm1d(32)
         self.bn2 = nn.BatchNorm1d(64)
 
-
         self.fc_mu = nn.Linear(64 * (342 // 4), latent_dim * (342 // 4))
         self.fc_sigma = nn.Linear(64 * (342 // 4), latent_dim * (342 // 4))
 
@@ -59,7 +58,7 @@ class SpectralDisentangler(nn.Module):
         # z = self.reparametrize(mu, sigma)
 
         return z
-    
+
     def reparametrize(self, mu, sigma):
         std = torch.exp(0.5 * sigma)
         eps = torch.randn_like(std)

@@ -52,7 +52,9 @@ class LitKoopmanUnmixer(L.LightningModule):
         predicted_latent_time_series = predicted_latent_time_series[
             1:, :, 0, :
         ].transpose(0, 1)
-        abundance_time_series = self.model.decode_abundance(predicted_latent_time_series)
+        abundance_time_series = self.model.decode_abundance(
+            predicted_latent_time_series
+        )
         reconstruction_time_series = self.model.final_layer(abundance_time_series)
 
         loss_dict = {}
@@ -128,7 +130,9 @@ class LitKoopmanUnmixer(L.LightningModule):
             )
 
     def __compute_sparsity_loss(self, phase, loss_dict, abundance_time_series):
-        sparsity_loss = 1e-1 * F.l1_loss(abundance_time_series, torch.zeros_like(abundance_time_series))
+        sparsity_loss = 1e-1 * F.l1_loss(
+            abundance_time_series, torch.zeros_like(abundance_time_series)
+        )
         loss_dict[f"{phase} sparsity loss"] = sparsity_loss
         return sparsity_loss, loss_dict
 

@@ -4,7 +4,9 @@ import torch.nn.functional as F
 
 
 class KoopmanUnmixer(nn.Module):
-    def __init__(self, input_dim: int, linear_dims: list, nb_classes: int = 4, device="cpu"):
+    def __init__(
+        self, input_dim: int, linear_dims: list, nb_classes: int = 4, device="cpu"
+    ):
         """
         Koopman Unmixer class, comprising a non-linear encoder a Koopman matrix and a linear final layer.
 
@@ -37,7 +39,6 @@ class KoopmanUnmixer(nn.Module):
         self.abundance_activation = nn.Softplus()
 
         self.final_layer = nn.Linear(nb_classes, input_dim)
-        
 
     def encode(self, x):
         """Encode input data x using the encoder layers."""
@@ -144,7 +145,7 @@ class KoopmanUnmixer(nn.Module):
             )
             abundance_list.append(abundance)
         return torch.stack(abundance_list, dim=1).squeeze(2)
-    
+
     def get_abundance(self, x):
         """
         Get abundance from input state.
@@ -162,7 +163,7 @@ class KoopmanUnmixer(nn.Module):
                 x = F.relu(x)
         abundance = self.abundance_activation(x)
         return abundance / torch.sum(abundance, dim=1, keepdim=True)
-    
+
     def decode_abundance(self, x):
         """
         Decode latent time series to abundance time series.
@@ -179,18 +180,13 @@ class KoopmanUnmixer(nn.Module):
                 x = F.relu(x)
         abundance = self.abundance_activation(x)
         return abundance
-    
+
+
 if __name__ == "__main__":
     input_data = torch.randn(256, 1, 20)
     model = KoopmanUnmixer(20, [512, 256, 64, 32], 4)
     x_advanced, phi = model.forward_n_remember(input_data, 100)
-    print(phi[
-            1:, :, 0, :
-        ].transpose(0, 1).shape)
+    print(phi[1:, :, 0, :].transpose(0, 1).shape)
 
     abundance = model.decode_abundance(phi)
-    print(abundance[
-            1:, :, 0, :
-        ].transpose(0, 1).shape)
-
-    
+    print(abundance[1:, :, 0, :].transpose(0, 1).shape)

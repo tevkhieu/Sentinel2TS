@@ -33,6 +33,9 @@ def create_arg_parser():
     )
     parser.add_argument("--mask", type=str, default=None, help="path to the mask file")
     parser.add_argument("--scale_data", type=bool, help="Scale the data")
+    parser.add_argument(
+        "--data_type", default="time_series", type=str, help="Type of data"
+    )
     return parser
 
 
@@ -49,11 +52,17 @@ def main():
         mask = np.load(args.mask)
         indices = np.where(mask == 1)
 
-    for x in tqdm(range(args.minimum_x, args.maximum_x)):
-        for y in range(args.minimum_y, args.maximum_y):
-            np.save(
-                os.path.join(dataset_dir, f"{x:03}_{y:03}.npy"), data[indices, :, x, y]
-            )
+    match args.data_type:
+        case "time_series":
+            for x in tqdm(range(args.minimum_x, args.maximum_x)):
+                for y in range(args.minimum_y, args.maximum_y):
+                    np.save(
+                        os.path.join(dataset_dir, f"{x:03}_{y:03}.npy"),
+                        data[indices, :, x, y],
+                    )
+        case "images":
+            for t in indices:
+                np.save(os.path.join(dataset_dir, f"{t:03}.npy"), data[t, :, :, :])
 
 
 if __name__ == "__main__":

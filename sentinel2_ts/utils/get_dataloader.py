@@ -1,10 +1,16 @@
 from torch.utils.data.dataloader import DataLoader
-
-from sentinel2_ts.dataset import SentinelDataset, UnmixingDataset
+from lightning.pytorch.utilities.combined_loader import CombinedLoader
+from sentinel2_ts.dataset import (
+    SentinelDataset,
+    UnmixingDataset,
+    TimeSeriesDataset,
+    MultispectralImageDataset,
+)
 
 
 def get_dataloader(
     path: str,
+    path_images: str = None,
     data_mode: str = None,
     time_span: int = 100,
     dataset_len: int = 512 * 512,
@@ -48,6 +54,50 @@ def get_dataloader(
                 pin_memory=pin_memory,
                 persistent_workers=True,
             )
+        case "time_series":
+            return DataLoader(
+                TimeSeriesDataset(
+                    path,
+                    minimal_x=minimal_x,
+                    maximal_x=maximal_x,
+                    minimal_y=minimal_y,
+                    maximal_y=maximal_y,
+                ),
+                batch_size=batch_size,
+                shuffle=shuffle,
+                num_workers=num_workers,
+                pin_memory=pin_memory,
+                persistent_workers=True,
+            )
+        case "lucas_unmixer":
+            return CombinedLoader(
+                [
+                    DataLoader(
+                        MultispectralImageDataset(path_images),
+                        batch_size=batch_size,
+                        shuffle=shuffle,
+                        num_workers=num_workers,
+                        pin_memory=pin_memory,
+                        persistent_workers=True,
+                    ),
+                    DataLoader(
+                        TimeSeriesDataset(
+                            path,
+                            minimal_x=minimal_x,
+                            maximal_x=maximal_x,
+                            minimal_y=minimal_y,
+                            maximal_y=maximal_y,
+                        ),
+                        batch_size=batch_size,
+                        shuffle=shuffle,
+                        num_workers=num_workers,
+                        pin_memory=pin_memory,
+                        persistent_workers=True,
+                    ),
+                ],
+                mode="sequential",
+            )
+
         case _:
             return DataLoader(
                 SentinelDataset(

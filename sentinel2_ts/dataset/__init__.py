@@ -1,2 +1,4 @@
 from .sentinel_dataset import SentinelDataset
 from .unmixing_dataset import UnmixingDataset
+from .time_series_dataset import TimeSeriesDataset
+from .multispectral_image_dataset import MultispectralImageDataset

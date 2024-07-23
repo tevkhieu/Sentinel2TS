@@ -5,3 +5,4 @@ from .koopman_unmixer import KoopmanUnmixer
 from .disentangler import Disentangler
 from .abundance_disentangler import AbundanceDisentangler
 from .spectral_disentangler import SpectralDisentangler
+from .lucas_unmixer import LucasUnmixer

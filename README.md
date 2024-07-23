@@ -31,13 +31,13 @@ This script will extract every time series into a single invidual npy file
 ## Train a model
 A varitety of different models are available to train looking through 
 ```bash
-scripts/train.py -h
+python scripts/train.py -h
 ```
 will help
 
 For training a koopman auto-encoder for example run:
 ```bash
-scripts/train.py --train_data_path datasets/your_dataset --val_data_path datasets/your_dataset --experiment_name koopman_example --mode koopman_ae --batch_size 512 --max_epochs 100
+python scripts/train.py --train_data_path datasets/your_dataset --val_data_path datasets/your_dataset --experiment_name koopman_example --mode koopman_ae --batch_size 512 --max_epochs 100
 ```
 
 ## Evaluation

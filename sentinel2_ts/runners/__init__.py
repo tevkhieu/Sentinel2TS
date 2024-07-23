@@ -8,3 +8,4 @@ from .dataset_generator import DatasetGenerator
 from .dynamical_mode_decomposition import DynamicalModeDecomposition
 from .clusterizer import Clusterizer
 from .dynamical_spectral_unmixer import DynamicalSpectralUnmixer
+from .trainer_lucas_unmixer import TrainerLucasUnmixer

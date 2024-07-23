@@ -48,6 +48,7 @@ def create_parser():
         "--save_folder", type=str, default=None, help="Folder for results"
     )
     parser.add_argument("--size", type=int, default=20, help="Size of the data")
+    parser.add_argument("--num_classes", type=int, default=5, help="Number of classes")
     return parser
 
 
@@ -60,7 +61,6 @@ def main():
         specters_path = os.path.join(args.ckpt_path, "specters.npy")
         abundance_map_path = os.path.join(args.ckpt_path, "abundance_map.npy")
 
-
         weights = np.load(weights_path)
         time = np.load(time_path)
         specters = np.load(specters_path)
@@ -68,10 +68,21 @@ def main():
 
         x_range, y_range, nb_endmembers = abundance_map.shape
 
-        prediction_map = np.zeros((time.shape[0], specters.shape[0], abundance_map.shape[0], abundance_map.shape[1]))
+        prediction_map = np.zeros(
+            (
+                time.shape[0],
+                specters.shape[0],
+                abundance_map.shape[0],
+                abundance_map.shape[1],
+            )
+        )
         for i in range(nb_endmembers):
-            prediction_map += weights[i] * time[:, i].reshape(-1, 1, 1, 1) * abundance_map[:, :, i].reshape(1, 1, x_range, y_range) * specters[:, i].reshape(1, specters.shape[0], 1, 1)
-
+            prediction_map += (
+                weights[i]
+                * time[:, i].reshape(-1, 1, 1, 1)
+                * abundance_map[:, :, i].reshape(1, 1, x_range, y_range)
+                * specters[:, i].reshape(1, specters.shape[0], 1, 1)
+            )
 
     elif args.mode == "dynamical_unmixing":
         abundance_map_path = os.path.join(args.ckpt_path, "abundance_map.npy")
@@ -84,7 +95,9 @@ def main():
 
         prediction_map = np.zeros((specter.shape[:2] + abundance_map.shape[:2]))
         for i in range(nb_endmembers):
-            prediction_map += abundance_map[:, :, i].reshape(1, 1, x_range, y_range) * specter[:, :, i].reshape(specter.shape[0], specter.shape[1], 1, 1)
+            prediction_map += abundance_map[:, :, i].reshape(
+                1, 1, x_range, y_range
+            ) * specter[:, :, i].reshape(specter.shape[0], specter.shape[1], 1, 1)
 
     else:
         model = load_model(args)
@@ -104,7 +117,10 @@ def main():
             state_map_time_series = get_state_all_data(data)
         else:
             state_map = (
-                get_state_all_data(data).transpose(0, -1).transpose(0, -2).transpose(0, -3)
+                get_state_all_data(data)
+                .transpose(0, -1)
+                .transpose(0, -2)
+                .transpose(0, -3)
             )
 
         for x in tqdm(range(x_range)):
@@ -113,7 +129,9 @@ def main():
                     prediction = model.forward_with_endmembers(
                         state_map[x, :, :].to(args.device), endmembers
                     )
-                    prediction = prediction.transpose(1, 2)[:, :nb_band, :].transpose(0, 2)
+                    prediction = prediction.transpose(1, 2)[:, :nb_band, :].transpose(
+                        0, 2
+                    )
                 else:
                     prediction = model(state_map[x, :, :].to(args.device))
                     prediction = prediction.transpose(0, 2)[:, :nb_band, :]

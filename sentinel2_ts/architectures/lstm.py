@@ -23,3 +23,9 @@ class LSTM(nn.Module):
         out = self.fc(out)
 
         return out.squeeze(1)
+
+
+if __name__ == "__main__":
+    model = LSTM(20, 512, 4)
+    x = torch.randn(1, 20, 342)
+    print(model(x).shape)
