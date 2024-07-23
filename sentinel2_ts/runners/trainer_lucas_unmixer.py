@@ -114,8 +114,8 @@ class TrainerLucasUnmixer:
                         .to(self.device)
                     )
                     self.predicted_abundances[
-                        :, :, x, y
-                    ] = self.model.abundance_unmixer(abundance_time_series)
+                        :, :, 0, x, y
+                    ] = self.model.abundance_unmixer(abundance_time_series.transpose(1, 2))
 
     def __configure_optimizers(self):
         """
