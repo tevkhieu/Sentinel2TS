@@ -6,3 +6,4 @@ from .disentangler import Disentangler
 from .abundance_disentangler import AbundanceDisentangler
 from .spectral_disentangler import SpectralDisentangler
 from .lucas_unmixer import LucasUnmixer
+from .time_disentangler import TimeDisentangler

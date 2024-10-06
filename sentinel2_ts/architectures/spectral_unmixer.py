@@ -58,6 +58,6 @@ class SpectralUnmixer(nn.Module):
 
 
 if __name__ == "__main__":
-    model = SpectralUnmixer(199, 199, 10, [16, 64], 4)
-    x = torch.randn(1, 10, 199, 199)
+    model = SpectralUnmixer(150, 150, 10, [16, 64], 5)
+    x = torch.randn(32 , 10, 150, 150)
     print(model(x).shape)

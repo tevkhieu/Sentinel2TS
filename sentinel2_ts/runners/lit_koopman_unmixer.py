@@ -18,6 +18,7 @@ class LitKoopmanUnmixer(L.LightningModule):
         self,
         size: int,
         experiment_name: str,
+        double_decoder: bool = True,
         latent_dim: list[int] = [512, 256, 32],
         lr: int = 1e-5,
         time_span: int = 100,
@@ -26,7 +27,7 @@ class LitKoopmanUnmixer(L.LightningModule):
         device: str = "cuda:0",
     ) -> None:
         super(LitKoopmanUnmixer, self).__init__()
-        self.model = KoopmanUnmixer(size, latent_dim, device=device)
+        self.model = KoopmanUnmixer(size, latent_dim, double_decoder=double_decoder, device=device)
         self.time_span = time_span
         self.use_orthogonal_loss = use_orthogonal_loss
         self.experiment_name = experiment_name

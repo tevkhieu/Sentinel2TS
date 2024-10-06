@@ -34,8 +34,8 @@ class TrainerLucasUnmixer:
         maximal_x=199,
         minimal_y=0,
         maximal_y=199,
+        endmembers_path=None,
     ) -> None:
-        super().__init__()
         self.size = size
         self.num_classes = num_classes
         self.time_range = time_range
@@ -44,6 +44,7 @@ class TrainerLucasUnmixer:
         self.automatic_optimization = False
         self.lr = lr
         self.save_dir = os.path.join("models", experiment_name)
+        os.makedirs(self.save_dir, exist_ok=True)
         self.experiment_name = experiment_name
         self.model = LucasUnmixer(
             size=size,
@@ -85,37 +86,22 @@ class TrainerLucasUnmixer:
         self.minimal_y = minimal_y
         self.maximal_y = maximal_y
         self.device = device
+        self.data = np.load("data/fontainebleau_interpolated.npy")[:, :, minimal_x:maximal_x, minimal_y:maximal_y]
+        self.endmembers = torch.Tensor(np.load(endmembers_path))
 
+    @torch.no_grad()
     def __update_predicted_specters(self):
         for t in range(self.time_range):
-            with torch.no_grad():
-                multispectral_image = (
-                    torch.Tensor(
-                        np.load(os.path.join(self.image_dataset_path, f"{t:03}.npy"))
-                    )
-                    .unsqueeze(0)
-                    .to(self.device)
-                )
-                self.predicted_specters[t] = self.model.get_specter(multispectral_image)
+            image = self.data[t, :, :, :]
+            image = torch.Tensor(image).to(self.device).unsqueeze(0)
+            self.predicted_specters[:, :, t, :] = self.model.get_specter(image)
 
+    @torch.no_grad()
     def __update_predicted_abundances(self):
-        with torch.no_grad():
-            for x in range(self.x_range):
-                for y in range(self.y_range):
-                    abundance_time_series = (
-                        torch.Tensor(
-                            np.load(
-                                os.path.join(
-                                    self.time_series_dataset_path, f"{x:03}_{y:03}.npy"
-                                )
-                            )
-                        )
-                        .unsqueeze(0)
-                        .to(self.device)
-                    )
-                    self.predicted_abundances[
-                        :, :, 0, x, y
-                    ] = self.model.abundance_unmixer(abundance_time_series.transpose(1, 2))
+        for x in (range(self.x_range)):
+            time_series = self.data[:, :, x, :]
+            time_series = torch.Tensor(time_series).to(self.device).transpose(0, 2)
+            self.predicted_abundances[0, :, 0, x, :] = self.model.get_abundance(time_series).transpose(0, 1)
 
     def __configure_optimizers(self):
         """
@@ -134,15 +120,12 @@ class TrainerLucasUnmixer:
         return optimizer_abundances, optimizer_specters
 
     def __training_step(self, batch, dataloader_idx) -> Tensor:
-        observed_states = batch
-        loss = self.__compute_loss("train", observed_states, dataloader_idx)
+        loss = self.__compute_loss("train", batch, dataloader_idx)
 
         return loss
 
-    def __update(self, dataloader_idx):
-        if dataloader_idx == 0:
+    def __update(self):
             self.__update_predicted_specters()
-        else:
             self.__update_predicted_abundances()
 
     def __save(self):
@@ -150,24 +133,26 @@ class TrainerLucasUnmixer:
             self.model.state_dict(),
             os.path.join(self.save_dir, f"best_{self.experiment_name}.pt"),
         )
-        torch.save(
-            self.predicted_specters,
+        np.save(
             os.path.join(self.save_dir, f"best_specters_{self.experiment_name}.pt"),
+            self.predicted_specters[0].cpu().detach().numpy(),
         )
-        torch.save(
-            self.predicted_abundances,
-            os.path.join(self.save_dir, f"best_abundances_{self.experiment_name}.pt"),
+        np.save(
+            os.path.join(self.save_dir, f"best_abundances_{self.experiment_name}.npy"),
+            self.predicted_abundances[0, :, 0].cpu().detach().numpy().transpose(1, 2, 0),
         )
 
     def __compute_loss(self, phase, batch, dataloader_idx):
         loss_dict = {}
 
         if dataloader_idx == 0:
+            batch, _ = batch
             loss, loss_dict = self.__compute_specter_extractor_loss(
                 phase, batch, loss_dict
             )
 
         else:
+            batch, _, _ = batch
             loss, loss_dict = self.__compute_abundance_extractor_loss(
                 phase, batch, loss_dict
             )
@@ -183,8 +168,9 @@ class TrainerLucasUnmixer:
         predicted_image = torch.sum(
             self.predicted_abundances * predicted_specters, dim=1
         )
-
-        loss = torch.mean((multispectral_image - predicted_image) ** 2)
+        loss_specter = self.__compute_cosine_loss(predicted_specters)
+        loss_image = torch.mean((multispectral_image - predicted_image) ** 2)
+        loss = loss_specter + loss_image
 
         return loss, loss_dict
 
@@ -210,7 +196,7 @@ class TrainerLucasUnmixer:
             [
                 DataLoader(
                     MultispectralImageDataset(self.image_dataset_path),
-                    batch_size=self.batch_size,
+                    batch_size=32,
                     shuffle=True,
                     num_workers=4,
                     pin_memory=True,
@@ -240,7 +226,7 @@ class TrainerLucasUnmixer:
         for epoch in tqdm(range(max_epochs)):
             for batch, batch_idx, dataloader_idx in train_dataloader:
                 loss = self.__training_step(batch, dataloader_idx)
-                if batch_idx % 100:
+                if not batch_idx % 10:
                     if dataloader_idx == 0:
                         self.writer.add_scalar(
                             "spectral loss",
@@ -263,8 +249,21 @@ class TrainerLucasUnmixer:
                     optimizer_abundances.zero_grad()
                     loss.backward()
                     optimizer_abundances.step()
-
-            self.__update(dataloader_idx)
+            self.__update()
             self.__save()
 
         self.writer.close()
+
+    def __compute_cosine_loss(self, predicted_specters):
+        endmembers = self.endmembers.expand(predicted_specters.size(0), self.num_classes, self.size)
+        endmembers = endmembers.view(predicted_specters.size(0), self.num_classes, self.size, 1, 1).to(self.device)
+
+        mse_loss = torch.nn.functional.mse_loss(
+            predicted_specters, endmembers
+        )
+
+        cosine_loss = torch.nn.functional.cosine_similarity(
+            predicted_specters, endmembers, dim=2
+        )        
+
+        return 1e-2 * mse_loss + 1 - torch.mean(cosine_loss)

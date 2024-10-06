@@ -28,7 +28,7 @@ def create_parser():
 def main():
     args = create_parser().parse_args()
 
-    endmembers = np.load(args.endmembers_path)[1:]
+    endmembers = np.load(args.endmembers_path)
     predicted_endmembers = np.load(args.predicted_endmembers_path)
     match args.mode:
         case "disentangler":
@@ -41,6 +41,8 @@ def main():
             predicted_endmembers = predicted_endmembers.transpose(1, 0)
         case "koopman_unmixer":
             pass
+        case "lucas_unmixer":
+            predicted_endmembers = predicted_endmembers[:, 175, :]
         case _:
             raise ValueError("Mode not supported")
 
@@ -62,7 +64,7 @@ def main():
             f,
         )
 
-    fig, ax = plt.subplots(1, 4, figsize=(30, 10))
+    fig, ax = plt.subplots(1, endmembers.shape[0], figsize=(30, 10))
     for i in range(endmembers.shape[0]):
         ax[i].plot(endmembers[i], label="Ground Truth")
         ax[i].plot(predicted_endmembers[good_permutation[i]], label="Predicted")
@@ -88,7 +90,7 @@ def _compute_endmember_angle(
     """
     angle = 1e9
     if good_permutation is None:
-        permutation_endmember = list(permutations(range(4)))
+        permutation_endmember = list(permutations(range(5)))
         good_permutation = None
         angle_list_permutation = None
         for permutation in permutation_endmember:

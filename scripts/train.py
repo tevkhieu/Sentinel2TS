@@ -74,6 +74,9 @@ def create_arg_parser():
         "--path_images", type=str, default=None, help="Path to images dataset"
     )
     parser.add_argument("--num_classes", type=int, default=4, help="Number of classes")
+    parser.add_argument(
+        "--double_decoder", type=bool, default=False, help="Double decoder"
+    )
     return parser
 
 
@@ -136,6 +139,7 @@ def main():
                 experiment_name=args.experiment_name,
                 latent_dim=args.latent_dim,
                 time_span=args.time_span,
+                double_decoder=args.double_decoder,
                 device=args.device,
             )
         case "spectral_disentangler":
@@ -154,6 +158,16 @@ def main():
                 endmembers=np.load(args.path_endmembers),
                 experiment_name=args.experiment_name,
                 abundance_mode=args.abundance_mode,
+            )
+        case "time_disentangler":
+            model = LitDisentangler(
+                size=args.size,
+                latent_dim=64,
+                num_classes=args.num_classes,
+                endmembers=np.load(args.path_endmembers),
+                experiment_name=args.experiment_name,
+                abundance_mode=args.abundance_mode,
+                disentangler_mode="time",
             )
         # case "lucas_unmixer":
         #     model = LitLucasUnmixer(

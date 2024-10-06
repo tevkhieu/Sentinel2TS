@@ -62,7 +62,7 @@ def main():
                     )
         case "images":
             for t in indices:
-                np.save(os.path.join(dataset_dir, f"{t:03}.npy"), data[t, :, :, :])
+                np.save(os.path.join(dataset_dir, f"{t:03}.npy"), data[t, :, args.minimum_x:args.maximum_x, args.minimum_y:args.maximum_y])
 
 
 if __name__ == "__main__":

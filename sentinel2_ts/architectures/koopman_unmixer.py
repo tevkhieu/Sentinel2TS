@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 class KoopmanUnmixer(nn.Module):
     def __init__(
-        self, input_dim: int, linear_dims: list, nb_classes: int = 4, device="cpu"
+        self, input_dim: int, linear_dims: list, nb_classes: int = 4, double_decoder: bool = True, device="cpu"
     ):
         """
         Koopman Unmixer class, comprising a non-linear encoder a Koopman matrix and a linear final layer.
@@ -31,11 +31,13 @@ class KoopmanUnmixer(nn.Module):
         self.state_dict()["K"] = self.K
 
         self.decoder = nn.ModuleList()
-        for i in range(len(linear_dims) - 1):
-            self.decoder.add_module(
-                f"decoder_{i+1}", nn.Linear(linear_dims[-i - 1], linear_dims[-i - 2])
-            )
-        self.decoder.add_module("decoder_final", nn.Linear(linear_dims[0], nb_classes))
+
+        if double_decoder:
+            for i in range(len(linear_dims) - 1):
+                self.decoder.add_module(
+                    f"decoder_{i+1}", nn.Linear(linear_dims[-i - 1], linear_dims[-i - 2])
+                )
+            self.decoder.add_module("decoder_final", nn.Linear(linear_dims[0], nb_classes))
         self.abundance_activation = nn.Softplus()
 
         self.final_layer = nn.Linear(nb_classes, input_dim)

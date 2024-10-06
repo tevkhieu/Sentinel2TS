@@ -20,7 +20,7 @@ class LSTM(nn.Module):
         c_t = torch.zeros(1, batch_size, self.hidden_size).to(x.device)
         for i in range(x.size(1) - 1):
             out, (h_t, c_t) = self.lstm(x[:, i : i + 1, :], (h_t, c_t))
-        out = self.fc(out)
+        out = torch.nn.functional.relu(self.fc(out))
 
         return out.squeeze(1)
 

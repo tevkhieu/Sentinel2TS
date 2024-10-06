@@ -49,6 +49,10 @@ def create_parser():
     )
     parser.add_argument("--size", type=int, default=20, help="Size of the data")
     parser.add_argument("--num_classes", type=int, default=5, help="Number of classes")
+    parser.add_argument("--abundance_mode", type=str, default="linear", help="Abundance mode")
+    parser.add_argument("--disentangler_mode", type=str, default="specter", help="Disentangler mode")
+    parser.add_argument("--data_mode", type=str, default="whatever", help="Data mode")
+    parser.add_argument("--double_decoder", type=bool, default=False, help="Double decoder")
     return parser
 
 
@@ -116,22 +120,28 @@ def main():
         if not args.mode == "disentangler":
             state_map_time_series = get_state_all_data(data)
         else:
-            state_map = (
-                get_state_all_data(data)
-                .transpose(0, -1)
-                .transpose(0, -2)
-                .transpose(0, -3)
-            )
+            if args.data_mode == "time_series":
+                state_map = torch.Tensor(data.transpose(2, 3, 1, 0))
+            else:
+                state_map = (
+                    get_state_all_data(data)
+                    .transpose(0, -1)
+                    .transpose(0, -2)
+                    .transpose(0, -3)
+                )
 
         for x in tqdm(range(x_range)):
             if args.mode == "disentangler":
                 if args.endmembers is not None:
                     prediction = model.forward_with_endmembers(
-                        state_map[x, :, :].to(args.device), endmembers
+                        state_map[x, :, :].to(args.device), endmembers, args.disentangler_mode
                     )
-                    prediction = prediction.transpose(1, 2)[:, :nb_band, :].transpose(
-                        0, 2
-                    )
+                    if args.disentangler_mode == "specter":
+                        prediction = prediction.transpose(1, 2)[:, :nb_band, :].transpose(
+                            0, 2
+                        )
+                    else:
+                        prediction = prediction.transpose(0, 2)[:, :nb_band, :]    
                 else:
                     prediction = model(state_map[x, :, :].to(args.device))
                     prediction = prediction.transpose(0, 2)[:, :nb_band, :]

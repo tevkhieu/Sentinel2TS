@@ -24,6 +24,8 @@ class LitDisentangler(L.LightningModule):
         abundance_mode: str = "conv",
         lr: int = 1e-5,
         beta: float = 150.0,
+        disentangler_mode: str = "specter",
+
     ) -> None:
         """
         Initialize the Lightning module
@@ -47,14 +49,15 @@ class LitDisentangler(L.LightningModule):
                 .float()
                 .view(1, endmembers.shape[0], -1, 1)
                 .to("cuda")
-            )[:, 1:, :, :]
+            )
         else:
             self.endmembers = None
         self.num_classes = (
             num_classes if endmembers is None else self.endmembers.shape[1]
         )
         self.beta = beta
-        self.model = Disentangler(size, latent_dim, self.num_classes, abundance_mode)
+        self.disentangler_mode = disentangler_mode
+        self.model = Disentangler(size, latent_dim, self.num_classes, abundance_mode, disentangler_mode)
         self.experiment_name = experiment_name
         self.val_loss = 1e5
         self.lr = lr
@@ -79,34 +82,44 @@ class LitDisentangler(L.LightningModule):
         """
 
         predicted_specters = self.model.spectral_disentangler(observed_states)
-        predicted_specters = predicted_specters.view(
-            predicted_specters.size(0), self.num_classes, self.size, -1
-        )
         predicted_abundances = self.model.abundance_disentangler(observed_states)
         predicted_abundances = predicted_abundances.view(
             predicted_abundances.size() + (1, 1)
         )
 
+        if self.disentangler_mode == "specter":
+            predicted_specters = predicted_specters.view(
+                predicted_specters.size(0), self.num_classes, self.size, -1
+            )
+        else:
+            predicted_specters = predicted_specters.view(
+                predicted_specters.size(0), self.num_classes, 1, -1
+            ) * self.endmembers
         loss_dict = {}
-
+        
         if self.endmembers is not None:
-            # modified_specters = predicted_specters.clone()
-            # modified_specters[:, :, : self.size // 2, :] = (
-            #     modified_specters[:, :, : self.size // 2, :] * self.endmembers
-            # )
-            # predicted_states = torch.sum(
-            #     predicted_abundances * modified_specters, dim=1
-            # ).transpose(1, 2)
-            predicted_states = torch.sum(
-                predicted_abundances * predicted_specters, dim=1
-            ).transpose(1, 2)
+            if self.disentangler_mode == "specter":
+                modified_specters = predicted_specters.clone()
+                modified_specters[:, :, : self.size // 2, :] = (
+                    modified_specters[:, :, : self.size // 2, :] * self.endmembers
+                )
+                predicted_states = torch.sum(
+                    predicted_abundances * modified_specters, dim=1
+                ).transpose(1, 2)
+                # predicted_states = torch.sum(
+                #     predicted_abundances * predicted_specters, dim=1
+                # ).transpose(1, 2)
 
-            loss_dict = self.__compute_cosine_loss(phase, loss_dict, predicted_specters)
+                # loss_dict = self.__compute_cosine_loss(phase, loss_dict, predicted_specters)
+            else:
+                predicted_states = torch.sum(
+                    predicted_abundances * predicted_specters, dim=1
+                ).transpose(1, 2)
 
         else:
             predicted_states = torch.sum(
                 predicted_abundances * predicted_specters, dim=1
-            ).transpose(1, 2)
+            )
 
         loss_dict = self.__compute_sparsity_loss(phase, predicted_abundances, loss_dict)
         loss_dict = self.__compute_recon_loss(
@@ -118,13 +131,19 @@ class LitDisentangler(L.LightningModule):
         return total_loss, loss_dict
 
     def training_step(self, batch, batch_idx) -> Tensor:
-        observed_states = batch
+        if self.disentangler_mode == "time":
+            observed_states, _, _ = batch
+        else:
+            observed_states = batch
         loss, loss_dict = self.__compute_loss("train", observed_states)
         self.log_dict(loss_dict)
         return loss
 
     def validation_step(self, batch, batch_idx) -> Tensor:
-        observed_states = batch
+        if self.disentangler_mode == "time":
+            observed_states, _, _ = batch
+        else:
+            observed_states = batch
         loss, loss_dict = self.__compute_loss("val", observed_states)
         self.log_dict(loss_dict)
         self.__save(loss)
@@ -154,7 +173,7 @@ class LitDisentangler(L.LightningModule):
     def __compute_sparsity_loss(
         self, phase, predicted_abundances, loss_dict: dict[str, Tensor] = None
     ):
-        loss_dict[f"{phase}_sparsity_loss"] = 1e-4 * torch.mean(
+        loss_dict[f"{phase}_sparsity_loss"] = 1e-2 * torch.mean(
             torch.abs(predicted_abundances)
         )
         return loss_dict

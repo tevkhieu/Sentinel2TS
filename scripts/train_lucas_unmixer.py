@@ -28,7 +28,16 @@ def create_arg_parser():
     parser.add_argument(
         "--max_epochs", type=int, default=150, help="Max number of epochs"
     )
-
+    parser.add_argument("--max_x", type=int, default=199, help="Max x value")
+    parser.add_argument("--min_y", type=int, default=0, help="Min y value")
+    parser.add_argument("--max_y", type=int, default=199, help="Max y value")
+    parser.add_argument("--min_x", type=int, default=0, help="Min x value")
+    parser.add_argument(
+        "--endmembers_path",
+        type=str,
+        default=None,
+        help="Path to the endmembers file",
+    )
     return parser
 
 
@@ -44,6 +53,11 @@ def main():
         time_series_dataset_path=args.time_series_dataset_path,
         lr=args.lr,
         batch_size=args.batch_size,
+        maximal_x=args.max_x,
+        minimal_y=args.min_y,
+        maximal_y=args.max_y,
+        minimal_x=args.min_x,
+        endmembers_path=args.endmembers_path,
     )
     trainer.train(max_epochs=args.max_epochs)
 

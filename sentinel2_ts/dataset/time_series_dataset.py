@@ -43,4 +43,4 @@ class TimeSeriesDataset(Dataset):
         )
         data = np.load(data_path)
 
-        return torch.Tensor(data).swapaxes(0, 1)[:, 1:]
+        return torch.Tensor(data).swapaxes(0, 1)[:, 1:], initial_x, initial_y

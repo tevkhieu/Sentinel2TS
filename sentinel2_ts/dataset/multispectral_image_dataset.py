@@ -14,4 +14,4 @@ class MultispectralImageDataset(Dataset):
         return self.len
 
     def __getitem__(self, index: int):
-        return torch.Tensor(np.load(os.path.join(self.dataset_path, f"{index:03}.npy")))
+        return torch.Tensor(np.load(os.path.join(self.dataset_path, f"{index:03}.npy"))), index

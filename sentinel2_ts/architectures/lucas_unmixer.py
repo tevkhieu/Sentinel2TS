@@ -22,7 +22,8 @@ class LucasUnmixer(nn.Module):
         )
 
     def get_specter(self, multispectral_image):
-        return self.spectral_unmixer(multispectral_image)
+        specters = self.spectral_unmixer(multispectral_image)
+        return specters.view(specters.size(0), self.num_classes, self.size)
 
     def get_abundance(self, time_series):
         return self.abundance_unmixer(time_series)

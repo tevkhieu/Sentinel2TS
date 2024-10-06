@@ -29,8 +29,8 @@ def create_argparser():
 
 def main():
     args = create_argparser().parse_args()
-    data = load_data(args)
-    reconstruction = np.load(args.reconstruction_path)
+    data = load_data(args)[1:]
+    reconstruction = np.load(args.reconstruction_path)[1:]
 
     total_mse = np.mean((data - reconstruction) ** 2)
 
@@ -43,7 +43,7 @@ def main():
             f,
         )
     plt.figure()
-    plt.imshow((np.mean((data - reconstruction) ** 2, axis=(0, 1))))
+    plt.imshow((np.mean((data - reconstruction) ** 2, axis=(0, 1))), vmax=total_mse * 2)
     plt.colorbar()
     plt.title("Reconstruction MSE")
     plt.axis("off")

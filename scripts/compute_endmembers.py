@@ -40,6 +40,7 @@ def create_argparser():
         default=[512, 256, 32],
         help="Latent dimension",
     )
+    parser.add_argument("--double_decoder", type=bool, default=False, help="Double decoder")
     return parser
 
 
@@ -64,7 +65,7 @@ def main():
         endmembers = endmembers.reshape(args.num_classes, args.size, -1)
 
     elif args.mode == "unmixer":
-        model = KoopmanUnmixer(args.size, args.latent_dim)
+        model = KoopmanUnmixer(args.size, args.latent_dim, double_decoder=args.double_decoder)
         model.load_state_dict(torch.load(args.ckpt_path))
 
         endmembers = (
